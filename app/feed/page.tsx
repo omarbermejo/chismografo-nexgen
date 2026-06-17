@@ -19,8 +19,10 @@ import Avatar from '@/components/Avatar'
 import CounterFlip from '@/components/CounterFlip'
 import CuestionarioCard from '@/components/CuestionarioCard'
 import AnswerPanel from '@/components/AnswerPanel'
+import RepostModal from '@/components/RepostModal'
 import TextareaAutosize from 'react-textarea-autosize'
 import { staggerContainer, staggerItem, slideDown } from '@/lib/variants'
+import { fireConfetti } from '@/lib/confetti'
 
 const BRAND = '#39e079'
 
@@ -74,6 +76,7 @@ export default function FeedPage() {
 
   // Panel
   const [activePanel, setActivePanel] = useState<string | null>(null)
+  const [repostTarget, setRepostTarget] = useState<Chisme | null>(null)
 
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const { ref: sentinelRef, inView } = useInView({ threshold: 0, rootMargin: '200px' })
@@ -134,6 +137,7 @@ export default function FeedPage() {
       const nuevo = await postChisme(texto.trim(), profile.username, profile.avatarSeed)
       setChismes(prev => [nuevo, ...prev])
       setTexto('')
+      fireConfetti()
       toast.success('Chisme publicado.')
     } catch {
       toast.error('No se pudo publicar.')
@@ -150,12 +154,17 @@ export default function FeedPage() {
     await darLike(id)
   }
 
-  async function handleRepost(id: string) {
+  function handleRepost(chisme: Chisme) {
+    setRepostTarget(chisme)
+  }
+
+  async function handleRepostConfirm(id: string) {
     if (reposted[id]) return
     const next = { ...reposted, [id]: true as const }
     setReposted(next); setLS('chismografo_reposted', next)
     setChismes(prev => prev.map(c => c.id === id ? { ...c, repost_count: c.repost_count + 1 } : c))
     await darRepost(id)
+    fireConfetti()
     toast.success('Reposteado.')
   }
 
@@ -215,15 +224,19 @@ export default function FeedPage() {
                     minRows={2}
                     className="w-full bg-transparent text-[15px] text-[#e0e0e0] placeholder-[#282828] resize-none outline-none leading-[1.6]"
                   />
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between pt-2">
                     <AnimatePresence>
                       {texto.length > 0 && (
-                        <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="text-[11px] text-[#2a2a2a] tabular-nums">
+                        <motion.span
+                          initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                          className="text-[11px] tabular-nums font-medium"
+                          style={{ color: texto.length > 450 ? '#e06030' : '#333' }}
+                        >
                           {texto.length}/500
                         </motion.span>
                       )}
                     </AnimatePresence>
-                    <div className="ml-auto flex items-center gap-2">
+                    <div className="ml-auto flex items-center gap-3">
                       <motion.button
                         type="button"
                         onClick={() => startTransition(() => router.push('/cuestionario/nuevo'))}
@@ -237,9 +250,13 @@ export default function FeedPage() {
                       <motion.button
                         type="submit"
                         disabled={!texto.trim() || sending}
-                        whileTap={{ scale: 0.96 }}
-                        className="text-[12px] font-black uppercase tracking-widest text-black px-4 py-2 disabled:opacity-20 disabled:cursor-not-allowed"
-                        style={{ background: texto.trim() ? '#f0f0f0' : '#1a1a1a' }}
+                        whileTap={texto.trim() ? { scale: 0.96 } : undefined}
+                        animate={{
+                          background: texto.trim() ? BRAND : '#141414',
+                          color: texto.trim() ? '#000' : '#282828',
+                        }}
+                        transition={{ duration: 0.18 }}
+                        className="text-[12px] font-black uppercase tracking-widest px-5 py-2.5 disabled:cursor-not-allowed w-[96px] text-center shrink-0"
                       >
                         {sending ? '…' : 'Publicar'}
                       </motion.button>
@@ -312,7 +329,7 @@ export default function FeedPage() {
                                   <MessageText width={15} height={15} color="#404040" />
                                   <CounterFlip count={item.data.comment_count} active={false} large />
                                 </motion.button>
-                                <motion.button onClick={() => handleRepost(item.data.id)} whileTap={!reposted[item.data.id] ? { scale: 0.85 } : undefined} className="flex items-center gap-2">
+                                <motion.button onClick={() => handleRepost(item.data)} whileTap={!reposted[item.data.id] ? { scale: 0.85 } : undefined} className="flex items-center gap-2">
                                   <motion.div animate={{ rotate: reposted[item.data.id] ? 360 : 0 }} transition={{ duration: 0.4 }}>
                                     <Refresh width={15} height={15} color={reposted[item.data.id] ? BRAND : '#404040'} />
                                   </motion.div>
@@ -380,6 +397,15 @@ export default function FeedPage() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* ── Repost modal ── */}
+      <RepostModal
+        chisme={repostTarget}
+        profile={profile}
+        isReposted={repostTarget ? !!reposted[repostTarget.id] : false}
+        onClose={() => setRepostTarget(null)}
+        onConfirm={handleRepostConfirm}
+      />
     </div>
   )
 }
