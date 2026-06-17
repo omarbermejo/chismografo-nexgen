@@ -15,7 +15,7 @@ import CounterFlip from '@/components/CounterFlip'
 import { staggerContainer, staggerItem } from '@/lib/variants'
 
 const BRAND = '#39e079'
-const HEADER_H = 56
+const HEADER_H = 56 // used for header height
 const COMPOSE_H = 68
 
 function getLS<T>(key: string, fallback: T): T {
@@ -100,7 +100,7 @@ export default function ChismePage() {
   const hasStats = chisme && (chisme.like_count > 0 || chisme.repost_count > 0 || chisme.comment_count > 0)
 
   return (
-    <div className="min-h-screen bg-black text-[#f0f0f0]">
+    <div className="h-full flex flex-col overflow-hidden bg-black text-[#f0f0f0]">
 
       {/* ── Header ── */}
       <motion.header
@@ -108,7 +108,7 @@ export default function ChismePage() {
         animate={{ opacity: 1 }}
         transition={{ duration: 0.2 }}
         style={{ height: HEADER_H }}
-        className="fixed inset-x-0 top-0 z-20 bg-black border-b border-[#181818]"
+        className="shrink-0 z-20 bg-black border-b border-[#181818]"
       >
         <div className="h-full max-w-[600px] mx-auto px-3 flex items-center gap-4">
           <motion.button
@@ -122,8 +122,7 @@ export default function ChismePage() {
         </div>
       </motion.header>
 
-      <div style={{ height: HEADER_H }} />
-
+      <div className="flex-1 overflow-y-auto">
       <div className="max-w-[600px] mx-auto" style={{ paddingBottom: COMPOSE_H + 8 }}>
 
         {/* ── Skeleton ── */}
@@ -282,15 +281,16 @@ export default function ChismePage() {
           </p>
         )}
       </div>
+      </div>
 
-      {/* ── Compose fijo ── */}
+      {/* ── Compose ── */}
       <motion.form
         initial={{ y: 6, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ delay: 0.1, duration: 0.2 }}
         onSubmit={handleSubmit}
         style={{ height: COMPOSE_H }}
-        className="fixed inset-x-0 bottom-0 z-20 bg-black border-t border-[#181818]"
+        className="shrink-0 z-20 bg-black border-t border-[#181818]"
       >
         <div className="max-w-[600px] mx-auto h-full px-4 flex items-center gap-3">
           <Avatar seed={profile.avatarSeed} size={30} className="overflow-hidden shrink-0" style={{ borderRadius: 0 }} />

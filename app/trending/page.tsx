@@ -4,18 +4,17 @@ import { useEffect, useState, startTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ViewTransition } from 'react'
-import { Heart, HeartSolid, MessageText, Refresh, ArrowLeft } from 'iconoir-react'
+import { Heart, HeartSolid, MessageText, Refresh, FireFlame } from 'iconoir-react'
 import { toast } from 'sonner'
 import { formatDistanceToNow } from 'date-fns'
 import { es } from 'date-fns/locale'
-import { getProfile, clearProfile, type Profile } from '@/lib/profile'
+import { getProfile, type Profile } from '@/lib/profile'
 import { getTrending, darLike, darRepost, type Chisme } from '@/lib/api'
 import Avatar from '@/components/Avatar'
 import CounterFlip from '@/components/CounterFlip'
 import { staggerContainer, staggerItem } from '@/lib/variants'
 
 const BRAND = '#39e079'
-const HEADER_H = 56
 
 function getLS<T>(key: string, fallback: T): T {
   try { return JSON.parse(localStorage.getItem(key) ?? 'null') ?? fallback } catch { return fallback }
@@ -71,42 +70,7 @@ export default function TrendingPage() {
   if (!profile) return null
 
   return (
-    <div className="min-h-screen bg-black text-[#f0f0f0]">
-
-      {/* ── Header ── */}
-      <header
-        style={{ height: HEADER_H }}
-        className="fixed inset-x-0 top-0 z-20 bg-black border-b border-[#181818]"
-      >
-        <div className="h-full max-w-[600px] mx-auto px-4 flex items-center justify-between">
-          <span className="text-[20px] font-black tracking-tighter text-white">CHISMÓGRAFO</span>
-          <nav className="flex items-center gap-5">
-            <button
-              onClick={() => startTransition(() => router.push('/feed'))}
-              className="text-[11px] font-bold uppercase tracking-widest text-[#404040] border-b-2 border-transparent pb-0.5 hover:text-white transition-colors"
-            >
-              Feed
-            </button>
-            <button
-              className="text-[11px] font-bold uppercase tracking-widest border-b-2 pb-0.5"
-              style={{ color: BRAND, borderColor: BRAND }}
-            >
-              Trending
-            </button>
-          </nav>
-          <motion.button
-            onClick={() => { clearProfile(); router.replace('/setup') }}
-            whileTap={{ scale: 0.9 }}
-          >
-            <ViewTransition name="user-avatar">
-              <Avatar seed={profile.avatarSeed} size={28} className="overflow-hidden" style={{ borderRadius: 0 }} />
-            </ViewTransition>
-          </motion.button>
-        </div>
-      </header>
-
-      <div style={{ height: HEADER_H }} />
-
+    <div className="h-full overflow-y-auto bg-black text-[#f0f0f0]">
       <div className="max-w-[600px] mx-auto">
 
         {/* Título de sección */}
@@ -114,11 +78,12 @@ export default function TrendingPage() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.3 }}
-          className="px-4 py-5 border-b border-[#181818]"
+          className="px-4 py-4 border-b border-[#181818] flex items-center gap-2.5"
         >
-          <p className="text-[11px] font-bold uppercase tracking-widest text-[#333]">
-            Los más chismeados
-          </p>
+          <FireFlame width={28} height={28} style={{ color: BRAND }} />
+          <span className="text-[42px] font-black uppercase tracking-tighter leading-none text-white">
+            Trending
+          </span>
         </motion.div>
 
         {/* ── Skeleton ── */}

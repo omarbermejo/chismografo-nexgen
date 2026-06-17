@@ -86,7 +86,7 @@ export default function NuevoCuestionarioPage() {
   }
 
   return (
-    <div className="min-h-screen bg-black text-[#f0f0f0]">
+    <div className="h-full flex flex-col overflow-hidden bg-black text-[#f0f0f0]">
 
       {/* Header */}
       <motion.header
@@ -94,7 +94,7 @@ export default function NuevoCuestionarioPage() {
         animate={{ opacity: 1 }}
         transition={{ duration: 0.2 }}
         style={{ height: HEADER_H }}
-        className="fixed inset-x-0 top-0 z-20 bg-black border-b border-[#181818]"
+        className="shrink-0 z-20 bg-black border-b border-[#181818]"
       >
         <div className="h-full max-w-[600px] mx-auto px-3 flex items-center gap-4">
           <motion.button
@@ -110,9 +110,8 @@ export default function NuevoCuestionarioPage() {
         </div>
       </motion.header>
 
-      <div style={{ height: HEADER_H }} />
-
-      <div className="max-w-[600px] mx-auto px-4 pb-28">
+      <div className="flex-1 overflow-y-auto">
+      <div className="max-w-[600px] mx-auto px-4 pb-4">
 
         {/* ── Título ── */}
         <motion.div
@@ -276,13 +275,14 @@ export default function NuevoCuestionarioPage() {
         </AnimatePresence>
 
       </div>
+      </div>
 
-      {/* ── Publish button (fixed) ── */}
+      {/* ── Publish button ── */}
       <motion.div
         initial={{ y: 16, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ delay: 0.2, duration: 0.25 }}
-        className="fixed bottom-0 inset-x-0 bg-black border-t border-[#181818] p-4"
+        className="shrink-0 bg-black border-t border-[#181818] p-4"
       >
         <div className="max-w-[600px] mx-auto">
           <motion.button

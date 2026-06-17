@@ -4,12 +4,12 @@ import { useEffect, useState, useRef, startTransition, useCallback } from 'react
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ViewTransition } from 'react'
-import { Heart, HeartSolid, MessageText, Refresh, Notes } from 'iconoir-react'
+import { Heart, HeartSolid, MessageText, Refresh, Notes, FireFlame } from 'iconoir-react'
 import { useInView } from 'react-intersection-observer'
 import { toast } from 'sonner'
 import { formatDistanceToNow } from 'date-fns'
 import { es } from 'date-fns/locale'
-import { getProfile, clearProfile, type Profile } from '@/lib/profile'
+import { getProfile, type Profile } from '@/lib/profile'
 import {
   getChismes, postChisme, darLike, darRepost,
   getCuestionarios,
@@ -23,7 +23,6 @@ import TextareaAutosize from 'react-textarea-autosize'
 import { staggerContainer, staggerItem, slideDown } from '@/lib/variants'
 
 const BRAND = '#39e079'
-const HEADER_H = 56
 
 type FeedItem =
   | { type: 'chisme'; data: Chisme }
@@ -177,46 +176,22 @@ export default function FeedPage() {
   const feed = mergeFeed(chismes, cuestionarios)
 
   return (
-    <div className="h-screen overflow-hidden bg-black text-[#f0f0f0] flex">
+    <div className="h-full flex overflow-hidden">
 
       {/* ── Feed column ── */}
-      <div className="flex-1 min-w-0 flex flex-col h-screen overflow-hidden">
-
-        {/* Header — normal flow (no fixed) */}
-        <header
-          style={{ height: HEADER_H }}
-          className="shrink-0 z-20 bg-black border-b border-[#181818]"
-        >
-          <div className="h-full max-w-[600px] mx-auto px-4 flex items-center justify-between">
-            <span className="text-[20px] font-black tracking-tighter text-white">CHISMÓGRAFO</span>
-            <nav className="flex items-center gap-5">
-              <button
-                className="text-[11px] font-bold uppercase tracking-widest border-b-2 pb-0.5"
-                style={{ color: BRAND, borderColor: BRAND }}
-              >
-                Feed
-              </button>
-              <button
-                onClick={() => startTransition(() => router.push('/trending'))}
-                className="text-[11px] font-bold uppercase tracking-widest text-[#404040] border-b-2 border-transparent pb-0.5 hover:text-white transition-colors"
-              >
-                Trending
-              </button>
-            </nav>
-            <motion.button
-              onClick={() => { clearProfile(); router.replace('/setup') }}
-              whileTap={{ scale: 0.9 }}
-            >
-              <ViewTransition name="user-avatar">
-                <Avatar seed={profile.avatarSeed} size={28} className="overflow-hidden" style={{ borderRadius: 0 }} />
-              </ViewTransition>
-            </motion.button>
-          </div>
-        </header>
+      <div className="flex-1 min-w-0 flex flex-col h-full overflow-hidden">
 
         {/* Scrollable feed body */}
         <div className="flex-1 overflow-y-auto">
           <div className="max-w-[600px] mx-auto">
+
+            {/* ── Page title ── */}
+            <div className="px-4 py-6 border-b border-[#181818] flex items-center gap-4">
+              <FireFlame width={28} height={28} style={{ color: BRAND }} />
+              <span className="text-[42px] font-black uppercase tracking-tighter leading-none text-white">
+                Feed
+              </span>
+            </div>
 
             {/* ── Compose area ── */}
             <div className="border-b border-[#181818]">

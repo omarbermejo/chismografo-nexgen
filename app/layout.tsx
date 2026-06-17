@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Poppins } from "next/font/google";
 import { Toaster } from "sonner";
+import ClientShell from "@/components/ClientShell";
 import "./globals.css";
 
 const poppins = Poppins({
@@ -21,8 +22,8 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es" className={`${poppins.variable} h-full antialiased`}>
-      <body className="min-h-full flex flex-col bg-black text-[#f0f0f0]">
-        {children}
+      <body className="h-screen overflow-hidden bg-black text-[#f0f0f0]">
+        <ClientShell>{children}</ClientShell>
         <Toaster
           position="bottom-center"
           toastOptions={{
