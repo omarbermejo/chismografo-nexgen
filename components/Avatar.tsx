@@ -1,6 +1,6 @@
 'use client'
 
-const avatar = require('nextjs-animal-avatar-generator').default
+import avatar from 'animal-avatar-generator'
 
 interface AvatarProps {
   seed: string
@@ -9,7 +9,7 @@ interface AvatarProps {
 }
 
 export default function Avatar({ seed, size = 64, className = '' }: AvatarProps) {
-  const svg = avatar(seed, { size })
+  const svg = avatar(seed, { size, round: true })
   return (
     <div
       className={className}
