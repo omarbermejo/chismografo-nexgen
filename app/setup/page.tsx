@@ -2,13 +2,14 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { saveProfile, getAvatarUrl } from '@/lib/profile'
+import { saveProfile } from '@/lib/profile'
+import Avatar from '@/components/Avatar'
 
 export default function SetupPage() {
   const router = useRouter()
   const [username, setUsername] = useState('')
 
-  const avatarUrl = username.trim() ? getAvatarUrl(username.trim()) : getAvatarUrl('default')
+  const seed = username.trim() || 'default'
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -23,11 +24,7 @@ export default function SetupPage() {
         <h1 className="text-2xl font-bold text-white tracking-tight">Chismógrafo</h1>
         <p className="text-zinc-400 text-sm text-center">Elige tu nombre de usuario. Nadie sabrá quién eres cuando chismees.</p>
 
-        <img
-          src={avatarUrl}
-          alt="avatar"
-          className="w-24 h-24 rounded-full bg-zinc-800 border-2 border-zinc-700"
-        />
+        <Avatar seed={seed} size={96} className="rounded-full overflow-hidden bg-zinc-800 border-2 border-zinc-700" />
 
         <form onSubmit={handleSubmit} className="w-full flex flex-col gap-4">
           <input

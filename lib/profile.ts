@@ -24,6 +24,3 @@ export function clearProfile(): void {
   localStorage.removeItem(KEY)
 }
 
-export function getAvatarUrl(seed: string): string {
-  return `https://api.dicebear.com/9.x/thumbs/svg?seed=${encodeURIComponent(seed)}&scale=90`
-}

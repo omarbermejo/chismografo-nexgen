@@ -2,8 +2,9 @@
 
 import { useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { getProfile, clearProfile, getAvatarUrl, type Profile } from '@/lib/profile'
+import { getProfile, clearProfile, type Profile } from '@/lib/profile'
 import { getChismes, postChisme, type Chisme } from '@/lib/api'
+import Avatar from '@/components/Avatar'
 
 export default function FeedPage() {
   const router = useRouter()
@@ -67,7 +68,7 @@ export default function FeedPage() {
       <header className="sticky top-0 z-10 bg-zinc-900/80 backdrop-blur border-b border-zinc-800 px-4 py-3 flex items-center justify-between">
         <h1 className="text-lg font-bold tracking-tight">Chismógrafo</h1>
         <div className="flex items-center gap-3">
-          <img src={getAvatarUrl(profile.avatarSeed)} alt="avatar" className="w-8 h-8 rounded-full bg-zinc-800" />
+          <Avatar seed={profile.avatarSeed} size={32} className="rounded-full overflow-hidden bg-zinc-800" />
           <span className="text-sm text-zinc-300">{profile.username}</span>
           <button onClick={handleLogout} className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors">
             Salir
