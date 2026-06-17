@@ -2,11 +2,12 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import { ViewTransition } from 'react'
 import { saveProfile } from '@/lib/profile'
 import Avatar from '@/components/Avatar'
-import { fadeUp, staggerContainer, staggerItem } from '@/lib/variants'
+
+const BRAND = '#39e079'
 
 export default function SetupPage() {
   const router = useRouter()
@@ -22,59 +23,66 @@ export default function SetupPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#101010] flex flex-col items-center justify-center px-6">
+    <main className="min-h-screen bg-black flex flex-col items-center justify-center px-6">
       <motion.div
-        className="w-full max-w-xs flex flex-col items-center gap-8"
-        variants={staggerContainer}
-        initial="hidden"
-        animate="show"
+        className="w-full max-w-xs flex flex-col gap-10"
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, ease: 'easeOut' }}
       >
+
         {/* Logo */}
-        <motion.div variants={staggerItem} className="flex flex-col items-center gap-1">
-          <span className="text-3xl font-bold tracking-tight text-white">Chismógrafo</span>
-          <span className="text-sm text-[#777]">El chisme, anónimo.</span>
-        </motion.div>
+        <div className="flex flex-col gap-1">
+          <h1 className="text-[36px] font-black tracking-tighter text-white leading-none">
+            CHISMÓ<br />GRAFO
+          </h1>
+          <p className="text-[11px] font-bold uppercase tracking-widest text-[#282828] mt-2">
+            El chisme, anónimo.
+          </p>
+        </div>
 
         {/* Avatar preview */}
-        <motion.div variants={staggerItem} className="flex flex-col items-center gap-3">
+        <div className="flex items-center gap-4">
           <ViewTransition name="user-avatar">
             <motion.div
               key={seed}
-              initial={{ scale: 0.85, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ duration: 0.2, ease: 'easeOut' }}
+              initial={{ opacity: 0.5 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.15 }}
             >
-              <Avatar seed={seed} size={88} className="rounded-full overflow-hidden" />
+              <Avatar seed={seed} size={72} className="overflow-hidden" style={{ borderRadius: 0 }} />
             </motion.div>
           </ViewTransition>
-          {username.trim() && (
-            <motion.span
-              variants={fadeUp}
-              initial="hidden"
-              animate="show"
-              className="text-xs text-[#666]"
-            >
-              Tu avatar se genera de tu nombre
-            </motion.span>
-          )}
-        </motion.div>
+          <AnimatePresence>
+            {username.trim() && (
+              <motion.div
+                initial={{ opacity: 0, x: -8 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -8 }}
+                transition={{ duration: 0.2 }}
+                className="flex flex-col gap-1"
+              >
+                <span className="text-[14px] font-black uppercase tracking-widest text-white">{username}</span>
+                <span className="text-[10px] font-bold uppercase tracking-widest text-[#282828]">Tu avatar</span>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
 
         {/* Form */}
-        <motion.form
-          variants={staggerItem}
-          onSubmit={handleSubmit}
-          className="w-full flex flex-col gap-4"
-        >
-          <div className="flex flex-col gap-1">
-            <label className="text-xs text-[#666] uppercase tracking-widest">Nombre de usuario</label>
+        <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+          <div className="flex flex-col gap-2">
+            <label className="text-[10px] font-bold uppercase tracking-widest text-[#333]">
+              Nombre de usuario
+            </label>
             <input
               type="text"
-              placeholder="@tunombre"
+              placeholder="tunombre"
               value={username}
               onChange={e => setUsername(e.target.value)}
               maxLength={24}
               autoFocus
-              className="w-full bg-transparent border-b border-[#2a2a2a] focus:border-white text-white placeholder-[#444] py-2 text-base outline-none transition-colors"
+              className="w-full bg-transparent border-b border-[#1c1c1c] focus:border-white text-white placeholder-[#222] py-2.5 text-[16px] font-medium outline-none transition-colors"
             />
           </div>
 
@@ -82,16 +90,18 @@ export default function SetupPage() {
             type="submit"
             disabled={!username.trim()}
             whileTap={{ scale: 0.97 }}
-            whileHover={{ borderColor: '#fff' }}
-            className="w-full mt-2 border border-[#2a2a2a] disabled:opacity-30 disabled:cursor-not-allowed text-white font-medium py-3 rounded-xl text-sm transition-colors"
+            className="w-full py-3.5 text-[12px] font-black uppercase tracking-widest text-black disabled:opacity-20 disabled:cursor-not-allowed transition-opacity"
+            style={{ background: username.trim() ? BRAND : '#1a1a1a', color: username.trim() ? '#000' : '#333' }}
           >
             Entrar
           </motion.button>
-        </motion.form>
+        </form>
 
-        <motion.p variants={staggerItem} className="text-xs text-[#444] text-center">
-          Tu perfil solo existe en este dispositivo.<br />Nadie sabe quién chismea.
-        </motion.p>
+        <p className="text-[10px] font-bold uppercase tracking-widest text-[#1c1c1c] leading-relaxed">
+          Tu perfil vive solo en este dispositivo.
+          <br />Nadie sabe quién chismea.
+        </p>
+
       </motion.div>
     </main>
   )

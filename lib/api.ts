@@ -20,9 +20,15 @@ export interface Comentario {
   created_at: string
 }
 
-export async function getChismes(): Promise<Chisme[]> {
-  const res = await fetch(`${BASE}/chismes`, { cache: 'no-store' })
+export async function getChismes(page = 1, limit = 15): Promise<{ data: Chisme[]; hasMore: boolean }> {
+  const res = await fetch(`${BASE}/chismes?page=${page}&limit=${limit}`, { cache: 'no-store' })
   if (!res.ok) throw new Error('Error al cargar chismes')
+  return res.json()
+}
+
+export async function getTrending(): Promise<Chisme[]> {
+  const res = await fetch(`${BASE}/chismes/trending`, { cache: 'no-store' })
+  if (!res.ok) throw new Error('Error al cargar trending')
   return res.json()
 }
 
@@ -42,6 +48,12 @@ export async function darLike(chismeId: string): Promise<void> {
 
 export async function darRepost(chismeId: string): Promise<void> {
   await fetch(`${BASE}/chismes/${chismeId}/reposts`, { method: 'POST' })
+}
+
+export async function getChisme(id: string): Promise<Chisme> {
+  const res = await fetch(`${BASE}/chismes/${id}`, { cache: 'no-store' })
+  if (!res.ok) throw new Error('Chisme no encontrado')
+  return res.json()
 }
 
 export async function getComentarios(chismeId: string): Promise<Comentario[]> {

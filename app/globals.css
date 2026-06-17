@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
 :root {
-  --background: #101010;
-  --foreground: #f3f3f3;
+  --background: #000000;
+  --foreground: #f0f0f0;
 }
 
 @theme inline {
@@ -20,3 +20,8 @@ body {
 * {
   box-sizing: border-box;
 }
+
+/* Brutalist scrollbar */
+::-webkit-scrollbar { width: 2px; }
+::-webkit-scrollbar-track { background: #000; }
+::-webkit-scrollbar-thumb { background: #1c1c1c; }

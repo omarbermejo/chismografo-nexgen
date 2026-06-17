@@ -7,22 +7,23 @@ const BRAND = '#39e079'
 interface Props {
   count: number
   active?: boolean
+  large?: boolean
 }
 
-export default function CounterFlip({ count, active }: Props) {
+export default function CounterFlip({ count, active, large }: Props) {
   return (
-    <div className="overflow-hidden h-[18px] flex items-center min-w-[12px]">
+    <div className={`overflow-hidden flex items-center min-w-[10px] ${large ? 'h-[26px]' : 'h-[18px]'}`}>
       <AnimatePresence mode="popLayout">
         <motion.span
           key={count}
-          initial={{ y: -12, opacity: 0 }}
+          initial={{ y: large ? -16 : -12, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
-          exit={{ y: 12, opacity: 0 }}
+          exit={{ y: large ? 16 : 12, opacity: 0 }}
           transition={{ duration: 0.18, ease: [0.32, 0.72, 0, 1] }}
-          className="text-[13px] tabular-nums font-medium block leading-none"
-          style={{ color: active ? BRAND : '#606060' }}
+          className={`tabular-nums font-black block leading-none ${large ? 'text-[22px]' : 'text-[13px] font-medium'}`}
+          style={{ color: active ? BRAND : '#404040' }}
         >
-          {count > 0 ? count : ''}
+          {count > 0 ? count : '0'}
         </motion.span>
       </AnimatePresence>
     </div>

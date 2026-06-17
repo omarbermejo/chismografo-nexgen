@@ -1,16 +1,20 @@
 'use client'
 
-import { useEffect, useState, useRef } from 'react'
-import { useRouter } from 'next/navigation'
+import { useEffect, useState, useRef, startTransition, useCallback } from 'react'
+import { useRouter, usePathname } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ViewTransition } from 'react'
-import { Heart, HeartSolid, MessageText, Refresh } from 'iconoir-react'
+import { Heart, HeartSolid, MessageText, Refresh, FireFlame } from 'iconoir-react'
+import { useInView } from 'react-intersection-observer'
+import { toast } from 'sonner'
+import { formatDistanceToNow } from 'date-fns'
+import { es } from 'date-fns/locale'
 import { getProfile, clearProfile, type Profile } from '@/lib/profile'
 import { getChismes, postChisme, darLike, darRepost, type Chisme } from '@/lib/api'
 import Avatar from '@/components/Avatar'
-import CommentSection from '@/components/CommentSection'
 import CounterFlip from '@/components/CounterFlip'
-import { slideDown, staggerContainer, staggerItem } from '@/lib/variants'
+import TextareaAutosize from 'react-textarea-autosize'
+import { staggerContainer, staggerItem, slideDown } from '@/lib/variants'
 
 const BRAND = '#39e079'
 const HEADER_H = 56
@@ -22,17 +26,36 @@ function setLS(key: string, val: unknown) {
   localStorage.setItem(key, JSON.stringify(val))
 }
 
+function timeAgo(dateStr: string) {
+  return formatDistanceToNow(new Date(dateStr), { locale: es, addSuffix: false })
+    .replace('alrededor de ', '')
+    .replace('menos de ', '')
+    .replace(' minutos', 'm')
+    .replace(' minuto', 'm')
+    .replace(' horas', 'h')
+    .replace(' hora', 'h')
+    .replace(' días', 'd')
+    .replace(' día', 'd')
+    .replace(' meses', 'mo')
+    .replace(' mes', 'mo')
+}
+
 export default function FeedPage() {
   const router = useRouter()
+  const pathname = usePathname()
   const [profile, setProfile] = useState<Profile | null>(null)
   const [chismes, setChismes] = useState<Chisme[]>([])
   const [texto, setTexto] = useState('')
   const [sending, setSending] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [hasMore, setHasMore] = useState(true)
+  const [page, setPage] = useState(1)
   const [liked, setLiked] = useState<Record<string, true>>({})
   const [reposted, setReposted] = useState<Record<string, true>>({})
-  const [openComments, setOpenComments] = useState<string | null>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+
+  const { ref: sentinelRef, inView } = useInView({ threshold: 0, rootMargin: '200px' })
 
   useEffect(() => {
     const p = getProfile()
@@ -40,13 +63,28 @@ export default function FeedPage() {
     setProfile(p)
     setLiked(getLS('chismografo_liked', {}))
     setReposted(getLS('chismografo_reposted', {}))
-    loadChismes()
+    loadPage(1, true)
   }, [router])
 
-  async function loadChismes() {
-    try { setChismes(await getChismes()) }
-    finally { setLoading(false) }
-  }
+  const loadPage = useCallback(async (p: number, reset = false) => {
+    if (reset) setLoading(true)
+    else setLoadingMore(true)
+    try {
+      const res = await getChismes(p)
+      setChismes(prev => reset ? res.data : [...prev, ...res.data])
+      setHasMore(res.hasMore)
+      setPage(p)
+    } finally {
+      setLoading(false)
+      setLoadingMore(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (inView && !loading && !loadingMore && hasMore) {
+      loadPage(page + 1)
+    }
+  }, [inView, loading, loadingMore, hasMore, page, loadPage])
 
   async function handlePost(e: React.FormEvent) {
     e.preventDefault()
@@ -56,9 +94,11 @@ export default function FeedPage() {
       const nuevo = await postChisme(texto.trim(), profile.username, profile.avatarSeed)
       setChismes(prev => [nuevo, ...prev])
       setTexto('')
+      toast.success('Chisme publicado.')
+    } catch {
+      toast.error('No se pudo publicar.')
     } finally {
       setSending(false)
-      textareaRef.current?.focus()
     }
   }
 
@@ -76,59 +116,45 @@ export default function FeedPage() {
     setReposted(next); setLS('chismografo_reposted', next)
     setChismes(prev => prev.map(c => c.id === id ? { ...c, repost_count: c.repost_count + 1 } : c))
     await darRepost(id)
-  }
-
-  function toggleComments(id: string) {
-    setOpenComments(prev => prev === id ? null : id)
-  }
-
-  function handleCommentAdded(id: string) {
-    setChismes(prev => prev.map(c => c.id === id ? { ...c, comment_count: c.comment_count + 1 } : c))
-  }
-
-  function handleLogout() {
-    clearProfile()
-    router.replace('/setup')
-  }
-
-  function timeAgo(dateStr: string) {
-    const diff = Date.now() - new Date(dateStr).getTime()
-    const mins = Math.floor(diff / 60000)
-    if (mins < 1) return 'ahora'
-    if (mins < 60) return `${mins}m`
-    const hrs = Math.floor(mins / 60)
-    if (hrs < 24) return `${hrs}h`
-    return `${Math.floor(hrs / 24)}d`
+    toast.success('Reposteado.')
   }
 
   if (!profile) return null
 
   return (
-    <div className="min-h-screen bg-[#0e0e0e] text-[#f0f0f0]">
+    <div className="min-h-screen bg-black text-[#f0f0f0]">
 
-      {/* ── Header fixed ── */}
-      <motion.header
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.35 }}
+      {/* ── Header ── */}
+      <header
         style={{ height: HEADER_H }}
-        className="fixed inset-x-0 top-0 z-20 bg-[#0e0e0e]/85 backdrop-blur-md border-b border-white/[0.06]"
+        className="fixed inset-x-0 top-0 z-20 bg-black border-b border-[#181818]"
       >
         <div className="h-full max-w-[600px] mx-auto px-4 flex items-center justify-between">
-          <span className="text-[16px] font-bold tracking-tight text-white">Chismógrafo</span>
+          <span className="text-[20px] font-black tracking-tighter text-white">CHISMÓGRAFO</span>
+          <nav className="flex items-center gap-5">
+            <button
+              className="text-[11px] font-bold uppercase tracking-widest border-b-2 pb-0.5"
+              style={{ color: BRAND, borderColor: BRAND }}
+            >
+              Feed
+            </button>
+            <button
+              onClick={() => startTransition(() => router.push('/trending'))}
+              className="text-[11px] font-bold uppercase tracking-widest text-[#404040] border-b-2 border-transparent pb-0.5 hover:text-white transition-colors"
+            >
+              Trending
+            </button>
+          </nav>
           <motion.button
-            onClick={handleLogout}
-            whileHover={{ opacity: 0.6 }}
-            transition={{ duration: 0.15 }}
-            className="flex items-center gap-2"
+            onClick={() => { clearProfile(); router.replace('/setup') }}
+            whileTap={{ scale: 0.9 }}
           >
             <ViewTransition name="user-avatar">
-              <Avatar seed={profile.avatarSeed} size={30} className="rounded-full overflow-hidden" />
+              <Avatar seed={profile.avatarSeed} size={28} className="overflow-hidden" style={{ borderRadius: 0 }} />
             </ViewTransition>
-            <span className="text-[13px] text-[#555] font-medium">{profile.username}</span>
           </motion.button>
         </div>
-      </motion.header>
+      </header>
 
       <div style={{ height: HEADER_H }} />
 
@@ -136,18 +162,17 @@ export default function FeedPage() {
 
         {/* ── Compose ── */}
         <motion.form
-          initial={{ opacity: 0, y: 4 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1, duration: 0.3 }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.3 }}
           onSubmit={handlePost}
-          className="px-4 pt-4 pb-3 flex gap-3 border-b border-white/[0.06]"
+          className="px-4 pt-5 pb-4 border-b border-[#181818] flex gap-3"
         >
           <ViewTransition name="user-avatar-compose">
-            <Avatar seed={profile.avatarSeed} size={40} className="rounded-full overflow-hidden shrink-0 mt-0.5" />
+            <Avatar seed={profile.avatarSeed} size={36} className="overflow-hidden shrink-0 mt-0.5" style={{ borderRadius: 0 }} />
           </ViewTransition>
-
-          <div className="flex flex-col flex-1 gap-2 min-w-0">
-            <textarea
+          <div className="flex-1 min-w-0 flex flex-col gap-3">
+            <TextareaAutosize
               ref={textareaRef}
               value={texto}
               onChange={e => setTexto(e.target.value)}
@@ -158,36 +183,29 @@ export default function FeedPage() {
                 }
               }}
               placeholder="¿Qué está pasando?"
-              rows={2}
               maxLength={500}
-              className="w-full bg-transparent text-[15px] text-[#e8e8e8] placeholder-[#2e2e2e] resize-none outline-none leading-[1.55] font-normal"
+              minRows={2}
+              className="w-full bg-transparent text-[15px] text-[#e0e0e0] placeholder-[#282828] resize-none outline-none leading-[1.6]"
             />
-
             <div className="flex items-center justify-between">
               <AnimatePresence>
                 {texto.length > 0 && (
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    className="flex items-center gap-3"
+                  <motion.span
+                    initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                    className="text-[11px] text-[#2a2a2a] tabular-nums"
                   >
-                    <span className="text-[11px] text-[#333]">{texto.length}/500</span>
-                    <span className="text-[11px] text-[#2a2a2a]">Shift+Enter para salto de línea</span>
-                  </motion.div>
+                    {texto.length}/500
+                  </motion.span>
                 )}
               </AnimatePresence>
               <motion.button
                 type="submit"
                 disabled={!texto.trim() || sending}
-                whileTap={{ scale: 0.93 }}
-                className="ml-auto text-[13px] font-semibold text-black bg-white disabled:opacity-20 disabled:cursor-not-allowed px-4 py-1.5 rounded-full"
+                whileTap={{ scale: 0.96 }}
+                className="ml-auto text-[12px] font-bold uppercase tracking-widest text-black px-4 py-2 disabled:opacity-20 disabled:cursor-not-allowed transition-opacity"
+                style={{ background: texto.trim() ? BRAND : '#1a1a1a' }}
               >
-                {sending ? (
-                  <motion.span animate={{ opacity: [1, 0.4, 1] }} transition={{ repeat: Infinity, duration: 0.9 }}>
-                    Enviando…
-                  </motion.span>
-                ) : 'Publicar'}
+                {sending ? '…' : 'Publicar'}
               </motion.button>
             </div>
           </div>
@@ -195,166 +213,136 @@ export default function FeedPage() {
 
         {/* ── Feed ── */}
         {loading ? (
-          <motion.div variants={staggerContainer} initial="hidden" animate="show" className="flex flex-col">
-            {[...Array(5)].map((_, i) => (
-              <motion.div key={i} variants={staggerItem} className="px-4 py-3 flex gap-3 border-b border-white/[0.04]">
+          <div className="flex flex-col">
+            {[...Array(6)].map((_, i) => (
+              <div key={i} className="px-4 py-4 border-b border-[#181818] flex gap-3">
                 <motion.div
-                  animate={{ opacity: [0.06, 0.15, 0.06] }}
-                  transition={{ repeat: Infinity, duration: 1.6, delay: i * 0.1 }}
-                  className="w-10 h-10 rounded-full bg-white shrink-0"
+                  animate={{ opacity: [0.04, 0.1, 0.04] }}
+                  transition={{ repeat: Infinity, duration: 1.8, delay: i * 0.1 }}
+                  className="w-9 h-9 bg-white shrink-0"
+                  style={{ borderRadius: 0 }}
                 />
-                <div className="flex flex-col gap-2.5 flex-1 pt-1">
-                  <div className="flex gap-3">
-                    <motion.div animate={{ opacity: [0.06, 0.15, 0.06] }} transition={{ repeat: Infinity, duration: 1.6, delay: i * 0.1 }} className="h-2 bg-white rounded-full w-[80px]" />
-                    <motion.div animate={{ opacity: [0.06, 0.15, 0.06] }} transition={{ repeat: Infinity, duration: 1.6, delay: i * 0.1 + 0.1 }} className="h-2 bg-white rounded-full w-[40px]" />
+                <div className="flex-1 flex flex-col gap-2.5 pt-1">
+                  <div className="flex justify-between">
+                    <motion.div animate={{ opacity: [0.04, 0.1, 0.04] }} transition={{ repeat: Infinity, duration: 1.8, delay: i * 0.1 + 0.05 }} className="h-2 bg-white w-20" />
+                    <motion.div animate={{ opacity: [0.04, 0.1, 0.04] }} transition={{ repeat: Infinity, duration: 1.8, delay: i * 0.1 + 0.05 }} className="h-2 bg-white w-8" />
                   </div>
-                  <motion.div animate={{ opacity: [0.06, 0.15, 0.06] }} transition={{ repeat: Infinity, duration: 1.6, delay: i * 0.1 + 0.15 }} className="h-2 bg-white rounded-full w-full" />
-                  <motion.div animate={{ opacity: [0.06, 0.15, 0.06] }} transition={{ repeat: Infinity, duration: 1.6, delay: i * 0.1 + 0.2 }} className="h-2 bg-white rounded-full w-4/5" />
+                  <motion.div animate={{ opacity: [0.04, 0.1, 0.04] }} transition={{ repeat: Infinity, duration: 1.8, delay: i * 0.1 + 0.1 }} className="h-2 bg-white w-full" />
+                  <motion.div animate={{ opacity: [0.04, 0.1, 0.04] }} transition={{ repeat: Infinity, duration: 1.8, delay: i * 0.1 + 0.15 }} className="h-2 bg-white w-3/4" />
                 </div>
-              </motion.div>
+              </div>
             ))}
-          </motion.div>
+          </div>
         ) : chismes.length === 0 ? (
           <motion.div variants={slideDown} initial="hidden" animate="show" className="flex flex-col items-center gap-2 py-24">
-            <p className="text-[15px] font-semibold text-[#2a2a2a]">Nada por aquí aún</p>
-            <p className="text-[13px] text-[#222]">Sé el primero en chismear.</p>
+            <p className="text-[14px] font-bold uppercase tracking-widest text-[#1c1c1c]">Sin chismes aún</p>
           </motion.div>
         ) : (
-          <motion.div variants={staggerContainer} initial="hidden" animate="show" className="flex flex-col">
+          <motion.div variants={staggerContainer} initial="hidden" animate="show">
             <AnimatePresence initial={false}>
               {chismes.map((c, i) => {
                 const isLiked = !!liked[c.id]
                 const isReposted = !!reposted[c.id]
-                const commentsOpen = openComments === c.id
 
                 return (
                   <motion.div
                     key={c.id}
-                    layout
                     variants={i === 0 && chismes.length > 1 ? slideDown : staggerItem}
                     initial="hidden"
                     animate="show"
-                    exit={{ opacity: 0, height: 0 }}
-                    className="border-b border-white/[0.05] overflow-hidden"
+                    exit={{ opacity: 0 }}
+                    className="border-b border-[#181818]"
                   >
-                    <article className="px-4 pt-3 pb-2 flex gap-3">
+                    <ViewTransition name={`post-${c.id}`}>
+                      <article className="px-4 py-4 flex gap-3">
 
-                      {/* ── Columna izquierda: avatar + thread line ── */}
-                      <div className="flex flex-col items-center shrink-0">
-                        <Avatar seed={c.avatar_seed} size={40} className="rounded-full overflow-hidden" />
-                        <AnimatePresence>
-                          {commentsOpen && (
-                            <motion.div
-                              initial={{ scaleY: 0, opacity: 0 }}
-                              animate={{ scaleY: 1, opacity: 1 }}
-                              exit={{ scaleY: 0, opacity: 0 }}
-                              style={{ transformOrigin: 'top' }}
-                              className="w-px flex-1 bg-white/[0.1] mt-2 min-h-[32px]"
-                            />
-                          )}
-                        </AnimatePresence>
-                      </div>
-
-                      {/* ── Columna derecha: contenido ── */}
-                      <div className="flex flex-col flex-1 min-w-0 pb-1">
-
-                        {/* Header: username · tiempo */}
-                        <div className="flex items-center gap-1.5 mb-0.5">
-                          <span className="text-[15px] font-semibold text-white leading-none">{c.username}</span>
-                          <span className="text-[#3a3a3a] text-[13px]">·</span>
-                          <span className="text-[13px] text-[#3a3a3a] leading-none">{timeAgo(c.created_at)}</span>
+                        {/* Avatar cuadrado */}
+                        <div className="shrink-0 mt-0.5">
+                          <ViewTransition name={`avatar-${c.id}`}>
+                            <Avatar seed={c.avatar_seed} size={36} className="overflow-hidden" style={{ borderRadius: 0 }} />
+                          </ViewTransition>
                         </div>
 
-                        {/* Texto */}
-                        <p className="text-[15px] text-[#e8e8e8] leading-[1.55] whitespace-pre-wrap break-words mt-0.5">
-                          {c.texto}
-                        </p>
+                        <div className="flex-1 min-w-0">
+                          {/* Header */}
+                          <div className="flex items-center justify-between mb-1.5">
+                            <span className="text-[11px] font-bold uppercase tracking-widest text-white">{c.username}</span>
+                            <span className="text-[11px] text-[#333]">{timeAgo(c.created_at)}</span>
+                          </div>
 
-                        {/* ── Barra de acciones ── */}
-                        <div className="flex items-center gap-1 mt-2 -ml-2">
+                          {/* Texto */}
+                          <p className="text-[15px] text-[#d0d0d0] leading-[1.65] whitespace-pre-wrap break-words">
+                            {c.texto}
+                          </p>
 
-                          {/* Like */}
-                          <motion.button
-                            onClick={() => handleLike(c.id)}
-                            whileTap={!isLiked ? { scale: 0.85 } : undefined}
-                            className="flex items-center gap-1 group"
-                          >
-                            <motion.div
-                              className="p-2 rounded-full transition-colors duration-150 group-hover:bg-[#39e079]/10"
-                              animate={isLiked ? { scale: [1, 1.3, 1] } : { scale: 1 }}
-                              transition={{ duration: 0.25 }}
+                          {/* Acciones — contadores grandes */}
+                          <div className="flex items-center gap-5 mt-3">
+
+                            <motion.button
+                              onClick={() => handleLike(c.id)}
+                              whileTap={!isLiked ? { scale: 0.85 } : undefined}
+                              className="flex items-center gap-2"
                             >
-                              {isLiked
-                                ? <HeartSolid width={20} height={20} style={{ color: BRAND }} />
-                                : <Heart width={20} height={20} color="#606060" />
-                              }
-                            </motion.div>
-                            <CounterFlip count={c.like_count} active={isLiked} />
-                          </motion.button>
-
-                          {/* Comentario */}
-                          <motion.button
-                            onClick={() => toggleComments(c.id)}
-                            whileTap={{ scale: 0.85 }}
-                            className="flex items-center gap-1 group"
-                          >
-                            <div className="p-2 rounded-full transition-colors duration-150 group-hover:bg-[#39e079]/10">
-                              <MessageText
-                                width={20} height={20}
-                                color={commentsOpen ? BRAND : '#606060'}
-                              />
-                            </div>
-                            <CounterFlip count={c.comment_count} active={commentsOpen} />
-                          </motion.button>
-
-                          {/* Repost */}
-                          <motion.button
-                            onClick={() => handleRepost(c.id)}
-                            whileTap={!isReposted ? { scale: 0.85 } : undefined}
-                            className="flex items-center gap-1 group"
-                          >
-                            <div className="p-2 rounded-full transition-colors duration-150 group-hover:bg-[#39e079]/10">
-                              <motion.div
-                                animate={{ rotate: isReposted ? 360 : 0 }}
-                                transition={{ duration: 0.4, ease: 'easeOut' }}
-                              >
-                                <Refresh width={20} height={20} color={isReposted ? BRAND : '#606060'} />
+                              <motion.div animate={isLiked ? { scale: [1, 1.3, 1] } : { scale: 1 }} transition={{ duration: 0.22 }}>
+                                {isLiked
+                                  ? <HeartSolid width={15} height={15} style={{ color: BRAND }} />
+                                  : <Heart width={15} height={15} color="#404040" />
+                                }
                               </motion.div>
-                            </div>
-                            <CounterFlip count={c.repost_count} active={isReposted} />
-                          </motion.button>
+                              <CounterFlip count={c.like_count} active={isLiked} large />
+                            </motion.button>
 
+                            <motion.button
+                              onClick={() => startTransition(() => router.push(`/chisme/${c.id}`))}
+                              whileTap={{ scale: 0.85 }}
+                              className="flex items-center gap-2"
+                            >
+                              <MessageText width={15} height={15} color="#404040" />
+                              <CounterFlip count={c.comment_count} active={false} large />
+                            </motion.button>
+
+                            <motion.button
+                              onClick={() => handleRepost(c.id)}
+                              whileTap={!isReposted ? { scale: 0.85 } : undefined}
+                              className="flex items-center gap-2"
+                            >
+                              <motion.div animate={{ rotate: isReposted ? 360 : 0 }} transition={{ duration: 0.4 }}>
+                                <Refresh width={15} height={15} color={isReposted ? BRAND : '#404040'} />
+                              </motion.div>
+                              <CounterFlip count={c.repost_count} active={isReposted} large />
+                            </motion.button>
+
+                          </div>
                         </div>
-                      </div>
-                    </article>
-
-                    {/* ── Comentarios ── */}
-                    <AnimatePresence>
-                      {commentsOpen && (
-                        <motion.div
-                          initial={{ opacity: 0, height: 0 }}
-                          animate={{ opacity: 1, height: 'auto' }}
-                          exit={{ opacity: 0, height: 0 }}
-                          transition={{ duration: 0.25, ease: 'easeOut' }}
-                          className="overflow-hidden"
-                        >
-                          <CommentSection
-                            key={c.id}
-                            chismeId={c.id}
-                            profile={profile}
-                            onCommentAdded={() => handleCommentAdded(c.id)}
-                          />
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
+                      </article>
+                    </ViewTransition>
                   </motion.div>
                 )
               })}
             </AnimatePresence>
+
+            {/* Sentinel para infinite scroll */}
+            <div ref={sentinelRef} className="h-1" />
+
+            {loadingMore && (
+              <div className="flex justify-center py-6">
+                <motion.div
+                  animate={{ opacity: [0.2, 0.6, 0.2] }}
+                  transition={{ repeat: Infinity, duration: 1.2 }}
+                  className="text-[11px] font-bold uppercase tracking-widest text-[#282828]"
+                >
+                  Cargando…
+                </motion.div>
+              </div>
+            )}
+
+            {!hasMore && chismes.length > 0 && (
+              <p className="text-center text-[11px] font-bold uppercase tracking-widest text-[#181818] py-8">
+                — fin —
+              </p>
+            )}
           </motion.div>
         )}
-
-        <div className="h-20" />
       </div>
     </div>
   )
