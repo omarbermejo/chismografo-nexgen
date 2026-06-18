@@ -22,6 +22,7 @@ import CuestionarioCard from '@/components/CuestionarioCard'
 import RepostModal from '@/components/RepostModal'
 import PaperNote from '@/components/PaperNote'
 import SecretText from '@/components/SecretText'
+import BookmarkButton from '@/components/BookmarkButton'
 import TextareaAutosize from 'react-textarea-autosize'
 import { staggerContainer, staggerItem, slideDown } from '@/lib/variants'
 import { fireConfetti } from '@/lib/confetti'
@@ -328,7 +329,8 @@ export default function FeedPage() {
               <motion.button
                 onClick={() => { setSearchOpen(v => !v); if (searchOpen) { setQuery(''); setSearchResults([]) } }}
                 whileTap={{ scale: 0.88 }}
-                animate={{ color: searchOpen ? 'var(--highlight)' : 'var(--ink-soft)', rotate: searchOpen ? 90 : 0 }}
+                animate={{ rotate: searchOpen ? 90 : 0 }}
+                style={{ color: searchOpen ? 'var(--highlight)' : 'var(--ink-soft)', transition: 'color 0.2s' }}
                 transition={{ duration: 0.2 }}
                 className="p-2 hover:bg-[var(--state-hover)] transition-colors shrink-0"
               >
@@ -561,6 +563,7 @@ export default function FeedPage() {
                                     </motion.div>
                                     <CounterFlip count={item.data.repost_count} active={!!reposted[item.data.id]} large />
                                   </motion.button>
+                                  <BookmarkButton chisme={item.data} />
                                 </div>
                               </div>
                             </article>

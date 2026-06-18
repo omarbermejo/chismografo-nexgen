@@ -3,7 +3,7 @@
 import { useEffect, useState, startTransition } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import { motion } from 'framer-motion'
-import { Journal, FireFlame, EditPencil, LogOut, SunLight, HalfMoon } from 'iconoir-react'
+import { Journal, FireFlame, EditPencil, LogOut, SunLight, HalfMoon, Bookmark } from 'iconoir-react'
 import { ViewTransition } from 'react'
 import { getProfile, clearProfile, type Profile } from '@/lib/profile'
 import { useTheme } from '@/lib/theme'
@@ -12,6 +12,7 @@ import Avatar from '@/components/Avatar'
 const NAV = [
   { label: 'feed', icon: Journal, path: '/feed' },
   { label: 'lo más chismeado', icon: FireFlame, path: '/trending' },
+  { label: 'guardados', icon: Bookmark, path: '/guardados' },
 ]
 
 export default function AppSidebar() {
@@ -68,16 +69,15 @@ export default function AppSidebar() {
                   transition={{ type: 'spring', stiffness: 400, damping: 32 }}
                 />
               )}
-              <motion.div animate={{ color: isActive ? 'var(--highlight)' : 'var(--ink-soft)' }} transition={{ duration: 0.2 }} className="relative z-10">
+              <div style={{ color: isActive ? 'var(--highlight)' : 'var(--ink-soft)', transition: 'color 0.2s' }} className="relative z-10">
                 <item.icon width={16} height={16} />
-              </motion.div>
-              <motion.span
-                animate={{ color: isActive ? 'var(--ink)' : 'var(--ink-soft)' }}
-                transition={{ duration: 0.2 }}
+              </div>
+              <span
+                style={{ color: isActive ? 'var(--ink)' : 'var(--ink-soft)', transition: 'color 0.2s' }}
                 className="text-[12px] font-black uppercase tracking-widest relative z-10"
               >
                 {item.label}
-              </motion.span>
+              </span>
             </motion.button>
           )
         })}

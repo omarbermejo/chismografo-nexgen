@@ -14,6 +14,7 @@ import Avatar from '@/components/Avatar'
 import CounterFlip from '@/components/CounterFlip'
 import PaperNote from '@/components/PaperNote'
 import SecretText from '@/components/SecretText'
+import BookmarkButton from '@/components/BookmarkButton'
 import { staggerContainer, staggerItem } from '@/lib/variants'
 
 const HEADER_H = 56 // used for header height
@@ -204,6 +205,10 @@ export default function ChismePage() {
                     </motion.div>
                     <CounterFlip count={chisme.repost_count} active={isReposted} large />
                   </motion.button>
+
+                  <div className="py-2 px-3">
+                    <BookmarkButton chisme={chisme} size={18} />
+                  </div>
                 </div>
               </PaperNote>
             </ViewTransition>

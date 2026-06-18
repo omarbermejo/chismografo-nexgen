@@ -13,6 +13,7 @@ import { getTrending, darLike, darRepost, type Chisme } from '@/lib/api'
 import Avatar from '@/components/Avatar'
 import CounterFlip from '@/components/CounterFlip'
 import SecretText from '@/components/SecretText'
+import BookmarkButton from '@/components/BookmarkButton'
 import { staggerContainer, staggerItem } from '@/lib/variants'
 import RepostModal from '@/components/RepostModal'
 
@@ -178,6 +179,8 @@ export default function TrendingPage() {
                                 </motion.div>
                                 <CounterFlip count={c.repost_count} active={isReposted} large />
                               </motion.button>
+
+                              <BookmarkButton chisme={c} size={14} />
                             </div>
 
                             {totalScore > 0 && (
