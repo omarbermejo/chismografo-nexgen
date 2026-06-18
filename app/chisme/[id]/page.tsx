@@ -10,6 +10,7 @@ import { formatDistanceToNow } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { getProfile, type Profile } from '@/lib/profile'
 import { getChisme, getComentarios, postComentario, darLike, darRepost, type Chisme, type Comentario } from '@/lib/api'
+import { supabase } from '@/lib/supabase'
 import Avatar from '@/components/Avatar'
 import CounterFlip from '@/components/CounterFlip'
 import PaperNote from '@/components/PaperNote'
@@ -50,6 +51,8 @@ export default function ChismePage() {
   const [liked, setLiked] = useState<Record<string, true>>({})
   const [reposted, setReposted] = useState<Record<string, true>>({})
   const inputRef = useRef<HTMLInputElement>(null)
+  // Para ignorar el evento de mi propio like (ya contado optimistamente)
+  const myLikeRef = useRef(false)
 
   useEffect(() => {
     const p = getProfile()
@@ -62,10 +65,39 @@ export default function ChismePage() {
       .finally(() => setLoading(false))
   }, [id, router])
 
+  useEffect(() => {
+    const channel = supabase
+      .channel(`chisme-${id}`)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'comentarios', filter: `chisme_id=eq.${id}` },
+        (payload) => {
+          const nuevo = payload.new as Comentario
+          setComentarios(prev => {
+            if (prev.some(c => c.id === nuevo.id)) return prev
+            return [...prev, nuevo]
+          })
+          setChisme(prev => prev ? { ...prev, comment_count: prev.comment_count + 1 } : prev)
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'likes', filter: `chisme_id=eq.${id}` },
+        () => {
+          if (myLikeRef.current) { myLikeRef.current = false; return }
+          setChisme(prev => prev ? { ...prev, like_count: prev.like_count + 1 } : prev)
+        }
+      )
+      .subscribe()
+
+    return () => { supabase.removeChannel(channel) }
+  }, [id])
+
   async function handleLike() {
     if (!chisme || liked[chisme.id]) return
     const next = { ...liked, [chisme.id]: true as const }
     setLiked(next); setLS('chismografo_liked', next)
+    myLikeRef.current = true
     setChisme(prev => prev ? { ...prev, like_count: prev.like_count + 1 } : prev)
     await darLike(chisme.id)
   }

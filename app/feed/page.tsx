@@ -14,7 +14,7 @@ import { getProfile, type Profile } from '@/lib/profile'
 import {
   getChismes, postChisme, darLike, darRepost,
   getCuestionarios, searchChismes, getReposts,
-  crearPoll, votarPoll,
+  crearPoll, votarPoll, getCuestionario, getChisme,
   type Chisme, type Cuestionario, type RepostItem,
 } from '@/lib/api'
 import Avatar from '@/components/Avatar'
@@ -29,6 +29,7 @@ import PollWidget from '@/components/PollWidget'
 import TextareaAutosize from 'react-textarea-autosize'
 import { staggerContainer, staggerItem, slideDown } from '@/lib/variants'
 import { fireConfetti } from '@/lib/confetti'
+import { supabase } from '@/lib/supabase'
 
 type FeedItem =
   | { type: 'chisme'; data: Chisme }
@@ -102,6 +103,10 @@ export default function FeedPage() {
 
   // Votos: chisme_id → opcion_id ya votado
   const [voted, setVoted] = useState<Record<string, string>>({})
+
+  // Refs para ignorar mis propias acciones en los handlers de realtime
+  const myLikedSetRef = useRef<Set<string>>(new Set())
+  const myRepostedChismeIdsRef = useRef<Set<string>>(new Set())
 
   const [pullY, setPullY] = useState(0)
   const [refreshing, setRefreshing] = useState(false)
@@ -188,6 +193,80 @@ export default function FeedPage() {
       .finally(() => setSearchLoading(false))
   }, [debouncedQuery])
 
+  useEffect(() => {
+    const channel = supabase
+      .channel('feed-realtime')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'chismes' },
+        (payload) => {
+          const row = payload.new as { id: string; texto: string; username: string; avatar_seed: string; secreto: boolean; created_at: string }
+          const item: Chisme = { ...row, like_count: 0, repost_count: 0, comment_count: 0, poll: null }
+          setChismes(prev => {
+            if (prev.some(c => c.id === item.id)) return prev
+            return [item, ...prev]
+          })
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'cuestionarios' },
+        async (payload) => {
+          const { id } = payload.new as { id: string }
+          try {
+            const detail = await getCuestionario(id)
+            setCuestionarios(prev => {
+              if (prev.some(c => c.id === detail.id)) return prev
+              return [detail as unknown as Cuestionario, ...prev]
+            })
+          } catch { /* silencioso */ }
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'reposts' },
+        async (payload) => {
+          const row = payload.new as { id: string; chisme_id: string; username: string; avatar_seed: string; texto: string | null; created_at: string }
+          if (myRepostedChismeIdsRef.current.has(row.chisme_id)) {
+            myRepostedChismeIdsRef.current.delete(row.chisme_id)
+            return
+          }
+          try {
+            const chismeOriginal = await getChisme(row.chisme_id)
+            const item: RepostItem = {
+              id: row.id,
+              created_at: row.created_at,
+              username: row.username,
+              avatar_seed: row.avatar_seed,
+              texto: row.texto,
+              chisme: chismeOriginal,
+            }
+            setReposts(prev => {
+              if (prev.some(r => r.id === item.id)) return prev
+              return [item, ...prev]
+            })
+          } catch { /* silencioso */ }
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'likes' },
+        (payload) => {
+          const { chisme_id } = payload.new as { chisme_id: string }
+          if (myLikedSetRef.current.has(chisme_id)) {
+            myLikedSetRef.current.delete(chisme_id)
+            return
+          }
+          setChismes(prev => prev.map(c =>
+            c.id === chisme_id ? { ...c, like_count: c.like_count + 1 } : c
+          ))
+        }
+      )
+      .subscribe()
+
+    return () => { supabase.removeChannel(channel) }
+  }, [])
+
   // ── Handlers ──────────────────────────────────────────────────────────────
 
   async function handlePostChisme(e: React.FormEvent) {
@@ -236,6 +315,7 @@ export default function FeedPage() {
     if (liked[id]) return
     const next = { ...liked, [id]: true as const }
     setLiked(next); setLS('chismografo_liked', next)
+    myLikedSetRef.current.add(id)
     setChismes(prev => prev.map(c => c.id === id ? { ...c, like_count: c.like_count + 1 } : c))
     await darLike(id)
   }
@@ -266,6 +346,7 @@ export default function FeedPage() {
       setReposts(prev => [optimistic, ...prev])
     }
 
+    myRepostedChismeIdsRef.current.add(id)
     await darRepost(id, profile.username, profile.avatarSeed, texto)
     fireConfetti()
     toast.success('se lo pasaste a todos.')
