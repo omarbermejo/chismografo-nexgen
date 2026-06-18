@@ -28,6 +28,12 @@ export async function getChismes(page = 1, limit = 15): Promise<{ data: Chisme[]
   return res.json()
 }
 
+export async function searchChismes(q: string): Promise<Chisme[]> {
+  const res = await fetch(`${BASE}/chismes/search?q=${encodeURIComponent(q)}`, { cache: 'no-store' })
+  if (!res.ok) throw new Error('Error al buscar')
+  return res.json()
+}
+
 export async function getTrending(): Promise<Chisme[]> {
   const res = await fetch(`${BASE}/chismes/trending`, { cache: 'no-store' })
   if (!res.ok) throw new Error('Error al cargar trending')

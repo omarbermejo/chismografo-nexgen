@@ -48,15 +48,21 @@ export default function RepostModal({ chisme, profile, isReposted, onClose, onCo
             className="fixed inset-0 z-40 bg-black/75"
           />
 
-          {/* Bottom sheet */}
+          {/* Centering wrapper — offset for sidebar (220px) */}
+          <div
+            key="centering"
+            className="fixed z-50 flex items-center justify-center px-4"
+            style={{ top: 0, bottom: 0, left: 220, right: 0, pointerEvents: 'none' }}
+          >
+          {/* Centered modal */}
           <motion.div
             key="sheet"
-            initial={{ y: '100%' }}
-            animate={{ y: 0 }}
-            exit={{ y: '100%' }}
-            transition={{ type: 'spring', stiffness: 360, damping: 38 }}
-            className="fixed inset-x-0 bottom-0 z-50 flex flex-col bg-[#080808] border-t border-[#1c1c1c]"
-            style={{ maxHeight: '82vh' }}
+            initial={{ opacity: 0, scale: 0.94, y: 10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.94, y: 10 }}
+            transition={{ type: 'spring', stiffness: 420, damping: 36 }}
+            className="flex flex-col bg-[#080808] border border-[#1c1c1c] w-full"
+            style={{ maxWidth: 480, maxHeight: '82vh', pointerEvents: 'all' }}
           >
             {/* Header */}
             <div className="shrink-0 flex items-center justify-between px-4 border-b border-[#181818]" style={{ height: 52 }}>
@@ -159,6 +165,7 @@ export default function RepostModal({ chisme, profile, isReposted, onClose, onCo
               </motion.button>
             </div>
           </motion.div>
+          </div>
         </>
       )}
     </AnimatePresence>

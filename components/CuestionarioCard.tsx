@@ -3,7 +3,8 @@
 import { motion, AnimatePresence } from 'framer-motion'
 import { formatDistanceToNow } from 'date-fns'
 import { es } from 'date-fns/locale'
-import { ArrowRight } from 'iconoir-react'
+import { ArrowRight, ShareIos } from 'iconoir-react'
+import { toast } from 'sonner'
 import { type Cuestionario } from '@/lib/api'
 import Avatar from '@/components/Avatar'
 
@@ -143,6 +144,20 @@ export default function CuestionarioCard({ cuestionario: c, onParticipate, alrea
               )}
             </div>
 
+            <div className="flex items-center gap-2">
+            <motion.button
+              onClick={() => {
+                const url = `${window.location.origin}/cuestionario/${c.id}`
+                navigator.clipboard.writeText(url)
+                toast.success('Link copiado.')
+              }}
+              whileTap={{ scale: 0.88 }}
+              className="p-1.5 hover:bg-white/[0.05] transition-colors"
+              style={{ color: '#383838' }}
+            >
+              <ShareIos width={14} height={14} />
+            </motion.button>
+
             <motion.button
               onClick={() => onParticipate(c.id)}
               whileTap={{ scale: 0.94 }}
@@ -162,6 +177,7 @@ export default function CuestionarioCard({ cuestionario: c, onParticipate, alrea
                 <ArrowRight width={12} height={12} />
               </motion.div>
             </motion.button>
+            </div>
           </div>
         </div>
       </div>

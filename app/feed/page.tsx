@@ -4,15 +4,16 @@ import { useEffect, useState, useRef, startTransition, useCallback } from 'react
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ViewTransition } from 'react'
-import { Heart, HeartSolid, MessageText, Refresh, Notes, FireFlame } from 'iconoir-react'
+import { Heart, HeartSolid, MessageText, Refresh, Notes, FireFlame, Search, Xmark } from 'iconoir-react'
 import { useInView } from 'react-intersection-observer'
+import { useDebounce } from 'use-debounce'
 import { toast } from 'sonner'
 import { formatDistanceToNow } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { getProfile, type Profile } from '@/lib/profile'
 import {
   getChismes, postChisme, darLike, darRepost,
-  getCuestionarios,
+  getCuestionarios, searchChismes,
   type Chisme, type Cuestionario,
 } from '@/lib/api'
 import Avatar from '@/components/Avatar'
@@ -78,6 +79,42 @@ export default function FeedPage() {
   const [activePanel, setActivePanel] = useState<string | null>(null)
   const [repostTarget, setRepostTarget] = useState<Chisme | null>(null)
 
+  // Search
+  const [query, setQuery] = useState('')
+  const [searchOpen, setSearchOpen] = useState(false)
+  const [searchResults, setSearchResults] = useState<Chisme[]>([])
+  const [searchLoading, setSearchLoading] = useState(false)
+  const [debouncedQuery] = useDebounce(query, 350)
+
+  // Anon
+  const [anon, setAnon] = useState(false)
+
+  const [pullY, setPullY] = useState(0)
+  const [refreshing, setRefreshing] = useState(false)
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const touchStartY = useRef(0)
+
+  function onTouchStart(e: React.TouchEvent) {
+    touchStartY.current = e.touches[0].clientY
+  }
+  function onTouchMove(e: React.TouchEvent) {
+    if (refreshing) return
+    const el = scrollRef.current
+    if (!el || el.scrollTop > 0) return
+    const delta = e.touches[0].clientY - touchStartY.current
+    if (delta > 0) setPullY(Math.min(delta * 0.4, 64))
+  }
+  async function onTouchEnd() {
+    if (pullY > 48 && !refreshing) {
+      setRefreshing(true)
+      setPullY(0)
+      await loadInitial()
+      setRefreshing(false)
+    } else {
+      setPullY(0)
+    }
+  }
+
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const { ref: sentinelRef, inView } = useInView({ threshold: 0, rootMargin: '200px' })
 
@@ -126,6 +163,13 @@ export default function FeedPage() {
     }
   }, [inView, loading, loadingMore, hasMore, page, loadMore])
 
+  useEffect(() => {
+    if (!debouncedQuery.trim()) { setSearchResults([]); return }
+    setSearchLoading(true)
+    searchChismes(debouncedQuery.trim())
+      .then(setSearchResults)
+      .finally(() => setSearchLoading(false))
+  }, [debouncedQuery])
 
   // ── Handlers ──────────────────────────────────────────────────────────────
 
@@ -133,9 +177,12 @@ export default function FeedPage() {
     e.preventDefault()
     if (!texto.trim() || sending || !profile) return
     setSending(true)
+    const username = anon ? 'anónimo' : profile.username
+    const avatarSeed = anon ? `anon-${Date.now()}` : profile.avatarSeed
     try {
-      const nuevo = await postChisme(texto.trim(), profile.username, profile.avatarSeed)
+      const nuevo = await postChisme(texto.trim(), username, avatarSeed)
       setChismes(prev => [nuevo, ...prev])
+      if (anon) setAnon(false)
       setTexto('')
       fireConfetti()
       toast.success('Chisme publicado.')
@@ -191,24 +238,88 @@ export default function FeedPage() {
       <div className="flex-1 min-w-0 flex flex-col h-full overflow-hidden">
 
         {/* Scrollable feed body */}
-        <div className="flex-1 overflow-y-auto">
+        <div
+          ref={scrollRef}
+          className="flex-1 overflow-y-auto"
+          onTouchStart={onTouchStart}
+          onTouchMove={onTouchMove}
+          onTouchEnd={onTouchEnd}
+        >
+          {/* Pull to refresh indicator */}
+          <AnimatePresence>
+            {(pullY > 0 || refreshing) && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: refreshing ? 44 : pullY, opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.15 }}
+                className="overflow-hidden flex items-center justify-center"
+              >
+                <motion.div
+                  animate={refreshing ? { rotate: 360 } : { rotate: pullY * 3 }}
+                  transition={refreshing ? { repeat: Infinity, duration: 0.6, ease: 'linear' } : { duration: 0 }}
+                  style={{ color: BRAND }}
+                >
+                  <Refresh width={18} height={18} />
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
           <div className="max-w-[600px] mx-auto">
 
-            {/* ── Page title ── */}
+            {/* ── Page title + search toggle ── */}
             <div className="px-4 py-6 border-b border-[#181818] flex items-center gap-4">
               <FireFlame width={28} height={28} style={{ color: BRAND }} />
-              <span className="text-[42px] font-black uppercase tracking-tighter leading-none text-white">
+              <span className="text-[42px] font-black uppercase tracking-tighter leading-none text-white flex-1">
                 Feed
               </span>
+              <motion.button
+                onClick={() => { setSearchOpen(v => !v); if (searchOpen) { setQuery(''); setSearchResults([]) } }}
+                whileTap={{ scale: 0.88 }}
+                className="p-2 hover:bg-white/[0.05] transition-colors"
+                style={{ color: searchOpen ? BRAND : '#404040' }}
+              >
+                {searchOpen ? <Xmark width={20} height={20} /> : <Search width={20} height={20} />}
+              </motion.button>
             </div>
+
+            {/* ── Search bar ── */}
+            <AnimatePresence>
+              {searchOpen && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 52, opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="overflow-hidden border-b border-[#181818]"
+                >
+                  <div className="h-full px-4 flex items-center gap-3">
+                    <Search width={14} height={14} color="#383838" />
+                    <input
+                      autoFocus
+                      value={query}
+                      onChange={e => setQuery(e.target.value)}
+                      placeholder="Buscar chismes…"
+                      className="flex-1 bg-transparent text-[14px] text-[#e0e0e0] placeholder-[#282828] outline-none"
+                    />
+                    {query && (
+                      <motion.button onClick={() => setQuery('')} whileTap={{ scale: 0.88 }}>
+                        <Xmark width={14} height={14} color="#383838" />
+                      </motion.button>
+                    )}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             {/* ── Compose area ── */}
             <div className="border-b border-[#181818]">
-              <form onSubmit={handlePostChisme} className="px-4 pt-4 pb-4 flex gap-3">
-                <ViewTransition name="user-avatar-compose">
-                  <Avatar seed={profile.avatarSeed} size={36} className="overflow-hidden shrink-0 mt-0.5" style={{ borderRadius: 0 }} />
-                </ViewTransition>
-                <div className="flex-1 min-w-0 flex flex-col gap-3">
+              <form onSubmit={handlePostChisme}>
+                {/* Textarea row */}
+                <div className="px-4 pt-4 pb-2 flex gap-3">
+                  <ViewTransition name="user-avatar-compose">
+                    <Avatar seed={profile.avatarSeed} size={36} className="overflow-hidden shrink-0 mt-1" style={{ borderRadius: 0 }} />
+                  </ViewTransition>
                   <TextareaAutosize
                     ref={textareaRef}
                     value={texto}
@@ -222,49 +333,102 @@ export default function FeedPage() {
                     placeholder="¿Qué está pasando?"
                     maxLength={500}
                     minRows={2}
-                    className="w-full bg-transparent text-[15px] text-[#e0e0e0] placeholder-[#282828] resize-none outline-none leading-[1.6]"
+                    className="flex-1 bg-transparent text-[15px] text-[#e0e0e0] placeholder-[#282828] resize-none outline-none leading-[1.6]"
                   />
-                  <div className="flex items-center justify-between pt-2">
+                </div>
+
+                {/* Action row */}
+                <div className="px-4 pb-3 flex items-center justify-between border-t border-[#111]">
+                  <div className="flex items-center gap-3">
                     <AnimatePresence>
                       {texto.length > 0 && (
                         <motion.span
                           initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                           className="text-[11px] tabular-nums font-medium"
-                          style={{ color: texto.length > 450 ? '#e06030' : '#333' }}
+                          style={{ color: texto.length > 450 ? '#e06030' : '#444' }}
                         >
                           {texto.length}/500
                         </motion.span>
                       )}
                     </AnimatePresence>
-                    <div className="ml-auto flex items-center gap-3">
-                      <motion.button
-                        type="button"
-                        onClick={() => startTransition(() => router.push('/cuestionario/nuevo'))}
-                        whileTap={{ scale: 0.88 }}
-                        title="Crear cuestionario"
-                        className="p-2 transition-colors hover:bg-white/[0.05]"
-                        style={{ color: BRAND }}
-                      >
-                        <Notes width={18} height={18} />
-                      </motion.button>
-                      <motion.button
-                        type="submit"
-                        disabled={!texto.trim() || sending}
-                        whileTap={texto.trim() ? { scale: 0.96 } : undefined}
-                        animate={{
-                          background: texto.trim() ? BRAND : '#141414',
-                          color: texto.trim() ? '#000' : '#282828',
-                        }}
-                        transition={{ duration: 0.18 }}
-                        className="text-[12px] font-black uppercase tracking-widest px-5 py-2.5 disabled:cursor-not-allowed w-[96px] text-center shrink-0"
-                      >
-                        {sending ? '…' : 'Publicar'}
-                      </motion.button>
-                    </div>
+                    <motion.button
+                      type="button"
+                      onClick={() => setAnon(v => !v)}
+                      whileTap={{ scale: 0.88 }}
+                      animate={{ color: anon ? BRAND : '#333' }}
+                      transition={{ duration: 0.15 }}
+                      className="text-[10px] font-black uppercase tracking-widest px-2 py-1 border transition-colors"
+                      style={{ borderColor: anon ? BRAND : '#1c1c1c' }}
+                    >
+                      Anón
+                    </motion.button>
+                  </div>
+                  <div className="ml-auto flex items-center gap-2 pr-1">
+                    <AnimatePresence>
+                      {texto.trim() && (
+                        <motion.button
+                          type="button"
+                          onClick={() => startTransition(() => router.push('/cuestionario/nuevo'))}
+                          initial={{ opacity: 0, scale: 0.8 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          exit={{ opacity: 0, scale: 0.8 }}
+                          transition={{ duration: 0.15 }}
+                          whileTap={{ scale: 0.88 }}
+                          title="Crear cuestionario"
+                          className="p-2 hover:bg-white/[0.05] transition-colors"
+                          style={{ color: BRAND }}
+                        >
+                          <Notes width={18} height={18} />
+                        </motion.button>
+                      )}
+                    </AnimatePresence>
+                    <motion.button
+                      type="submit"
+                      disabled={!texto.trim() || sending}
+                      whileTap={texto.trim() ? { scale: 0.96 } : undefined}
+                      animate={{
+                        background: texto.trim() ? BRAND : '#141414',
+                        color: texto.trim() ? '#000' : '#282828',
+                      }}
+                      transition={{ duration: 0.18 }}
+                      className="text-[12px] font-black uppercase tracking-widest px-6 py-2 disabled:cursor-not-allowed shrink-0"
+                    >
+                      {sending ? '…' : 'Publicar'}
+                    </motion.button>
                   </div>
                 </div>
               </form>
             </div>
+
+            {/* ── Search results ── */}
+            <AnimatePresence>
+              {searchOpen && debouncedQuery.trim() && (
+                <motion.div
+                  key="search-results"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="border-b border-[#181818]"
+                >
+                  {searchLoading ? (
+                    <div className="py-8 text-center text-[11px] font-bold uppercase tracking-widest text-[#282828]">Buscando…</div>
+                  ) : searchResults.length === 0 ? (
+                    <div className="py-8 text-center text-[11px] font-bold uppercase tracking-widest text-[#1c1c1c]">Sin resultados.</div>
+                  ) : (
+                    searchResults.map(c => (
+                      <div key={c.id} className="px-4 py-4 border-b border-[#181818] flex gap-3 cursor-pointer hover:bg-white/[0.02]"
+                        onClick={() => startTransition(() => router.push(`/chisme/${c.id}`))}>
+                        <Avatar seed={c.avatar_seed} size={32} className="overflow-hidden shrink-0" style={{ borderRadius: 0 }} />
+                        <div className="flex-1 min-w-0">
+                          <span className="text-[11px] font-bold uppercase tracking-widest text-white">{c.username}</span>
+                          <p className="text-[14px] text-[#d0d0d0] leading-[1.6] mt-1">{c.texto}</p>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             {/* ── Feed ── */}
             {loading ? (

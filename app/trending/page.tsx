@@ -13,6 +13,7 @@ import { getTrending, darLike, darRepost, type Chisme } from '@/lib/api'
 import Avatar from '@/components/Avatar'
 import CounterFlip from '@/components/CounterFlip'
 import { staggerContainer, staggerItem } from '@/lib/variants'
+import RepostModal from '@/components/RepostModal'
 
 const BRAND = '#39e079'
 
@@ -38,6 +39,7 @@ export default function TrendingPage() {
   const [loading, setLoading] = useState(true)
   const [liked, setLiked] = useState<Record<string, true>>({})
   const [reposted, setReposted] = useState<Record<string, true>>({})
+  const [repostTarget, setRepostTarget] = useState<Chisme | null>(null)
 
   useEffect(() => {
     const p = getProfile()
@@ -58,7 +60,7 @@ export default function TrendingPage() {
     await darLike(id)
   }
 
-  async function handleRepost(id: string) {
+  async function handleRepostConfirm(id: string) {
     if (reposted[id]) return
     const next = { ...reposted, [id]: true as const }
     setReposted(next); setLS('chismografo_reposted', next)
@@ -188,7 +190,7 @@ export default function TrendingPage() {
                               </motion.button>
 
                               <motion.button
-                                onClick={() => handleRepost(c.id)}
+                                onClick={() => setRepostTarget(c)}
                                 whileTap={!isReposted ? { scale: 0.85 } : undefined}
                                 className="flex items-center gap-2"
                               >
@@ -217,6 +219,13 @@ export default function TrendingPage() {
           </motion.div>
         )}
       </div>
+      <RepostModal
+        chisme={repostTarget}
+        profile={profile}
+        isReposted={repostTarget ? !!reposted[repostTarget.id] : false}
+        onClose={() => setRepostTarget(null)}
+        onConfirm={async (id) => { await handleRepostConfirm(id); setRepostTarget(null) }}
+      />
     </div>
   )
 }
