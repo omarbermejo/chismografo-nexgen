@@ -1,4 +1,4 @@
-const BASE = process.env.NEXT_PUBLIC_API_URL ?? 'https://chismografo-api.vercel.app/'
+const BASE = process.env.NEXT_PUBLIC_API_URL ?? 'https://chismografo-api.vercel.app'
 
 // ── Chismes ──────────────────────────────────────────────────────────────────
 
