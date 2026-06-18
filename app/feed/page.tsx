@@ -4,7 +4,7 @@ import { useEffect, useState, useRef, startTransition, useCallback } from 'react
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ViewTransition } from 'react'
-import { Heart, HeartSolid, MessageText, Refresh, Notes, FireFlame, Search, Xmark } from 'iconoir-react'
+import { Heart, HeartSolid, MessageText, Refresh, Notes, EditPencil, Search, Xmark, EyeClosed } from 'iconoir-react'
 import { useInView } from 'react-intersection-observer'
 import { useDebounce } from 'use-debounce'
 import { toast } from 'sonner'
@@ -20,11 +20,11 @@ import Avatar from '@/components/Avatar'
 import CounterFlip from '@/components/CounterFlip'
 import CuestionarioCard from '@/components/CuestionarioCard'
 import RepostModal from '@/components/RepostModal'
+import PaperNote from '@/components/PaperNote'
+import SecretText from '@/components/SecretText'
 import TextareaAutosize from 'react-textarea-autosize'
 import { staggerContainer, staggerItem, slideDown } from '@/lib/variants'
 import { fireConfetti } from '@/lib/confetti'
-
-const BRAND = '#39e079'
 
 type FeedItem =
   | { type: 'chisme'; data: Chisme }
@@ -87,8 +87,9 @@ export default function FeedPage() {
   const [searchLoading, setSearchLoading] = useState(false)
   const [debouncedQuery] = useDebounce(query, 350)
 
-  // Anon
+  // Anón + secreto
   const [anon, setAnon] = useState(false)
+  const [secret, setSecret] = useState(false)
 
   const [pullY, setPullY] = useState(0)
   const [refreshing, setRefreshing] = useState(false)
@@ -182,15 +183,17 @@ export default function FeedPage() {
     setSending(true)
     const username = anon ? 'anónimo' : profile.username
     const avatarSeed = anon ? `anon-${Date.now()}` : profile.avatarSeed
+    const esSecreto = secret
     try {
-      const nuevo = await postChisme(texto.trim(), username, avatarSeed)
+      const nuevo = await postChisme(texto.trim(), username, avatarSeed, esSecreto)
       setChismes(prev => [nuevo, ...prev])
       if (anon) setAnon(false)
+      setSecret(false)
       setTexto('')
       fireConfetti()
-      toast.success('Chisme publicado.')
+      toast.success(esSecreto ? 'queda tapado. 🤫' : 'queda escrito. 🤫')
     } catch {
-      toast.error('No se pudo publicar.')
+      toast.error('No se pudo escribir. Inténtalo otra vez.')
     } finally {
       setSending(false)
     }
@@ -232,7 +235,7 @@ export default function FeedPage() {
 
     await darRepost(id, profile.username, profile.avatarSeed, texto)
     fireConfetti()
-    toast.success('Reposteado.')
+    toast.success('se lo pasaste a todos.')
   }
 
   function openCuestionario(id: string) {
@@ -246,18 +249,17 @@ export default function FeedPage() {
   return (
     <div className="h-full flex overflow-hidden">
 
-      {/* ── Feed column ── */}
+      {/* ── Columna del cuaderno ── */}
       <div className="flex-1 min-w-0 flex flex-col h-full overflow-hidden">
 
-        {/* Scrollable feed body */}
         <div
           ref={scrollRef}
-          className="flex-1 overflow-y-auto"
+          className="flex-1 overflow-y-auto ruled"
           onTouchStart={onTouchStart}
           onTouchMove={onTouchMove}
           onTouchEnd={onTouchEnd}
         >
-          {/* Pull to refresh indicator */}
+          {/* Pull to refresh */}
           <AnimatePresence>
             {(pullY > 0 || refreshing) && (
               <motion.div
@@ -270,21 +272,21 @@ export default function FeedPage() {
                 <motion.div
                   animate={refreshing ? { rotate: 360 } : { rotate: pullY * 3 }}
                   transition={refreshing ? { repeat: Infinity, duration: 0.6, ease: 'linear' } : { duration: 0 }}
-                  style={{ color: BRAND }}
+                  style={{ color: 'var(--highlight)' }}
                 >
                   <Refresh width={18} height={18} />
                 </motion.div>
               </motion.div>
             )}
           </AnimatePresence>
+
           <div className="max-w-[600px] mx-auto">
 
-            {/* ── Header: título ⇄ búsqueda integrada ── */}
-            <div className="px-4 py-6 border-b border-[#181818] flex items-center gap-4">
-              <FireFlame width={28} height={28} style={{ color: BRAND }} className="shrink-0" />
+            {/* ── Etiqueta de la tapa: título ⇄ búsqueda ── */}
+            <div className="px-4 py-6 border-b border-line flex items-center gap-4 bg-paper">
+              <EditPencil width={26} height={26} style={{ color: 'var(--highlight)' }} className="shrink-0" />
 
-              {/* Zona que muta entre título y campo de búsqueda */}
-              <div className="flex-1 min-w-0 relative h-[42px] flex items-center">
+              <div className="flex-1 min-w-0 relative h-[44px] flex items-center">
                 <AnimatePresence mode="wait" initial={false}>
                   {searchOpen ? (
                     <motion.div
@@ -296,7 +298,7 @@ export default function FeedPage() {
                       style={{ originX: 0 }}
                       className="absolute inset-0 flex items-center gap-3"
                     >
-                      <Search width={18} height={18} color="#383838" className="shrink-0" />
+                      <Search width={18} height={18} color="var(--ink-soft)" className="shrink-0" />
                       <input
                         autoFocus
                         value={query}
@@ -304,8 +306,8 @@ export default function FeedPage() {
                         onKeyDown={e => {
                           if (e.key === 'Escape') { setSearchOpen(false); setQuery(''); setSearchResults([]) }
                         }}
-                        placeholder="Buscar chismes…"
-                        className="flex-1 min-w-0 bg-transparent text-[20px] font-bold text-[#e0e0e0] placeholder-[#282828] outline-none"
+                        placeholder="busca el chisme…"
+                        className="flex-1 min-w-0 bg-transparent font-hand text-[24px] text-ink placeholder-ink-faint outline-none"
                       />
                     </motion.div>
                   ) : (
@@ -315,9 +317,9 @@ export default function FeedPage() {
                       animate={{ opacity: 1, x: 0 }}
                       exit={{ opacity: 0, x: -8 }}
                       transition={{ duration: 0.18 }}
-                      className="absolute inset-0 flex items-center text-[42px] font-black uppercase tracking-tighter leading-none text-white"
+                      className="absolute inset-0 flex items-center font-hand-title text-[40px] leading-none text-ink"
                     >
-                      Feed
+                      Chismógrafo
                     </motion.span>
                   )}
                 </AnimatePresence>
@@ -326,103 +328,113 @@ export default function FeedPage() {
               <motion.button
                 onClick={() => { setSearchOpen(v => !v); if (searchOpen) { setQuery(''); setSearchResults([]) } }}
                 whileTap={{ scale: 0.88 }}
-                animate={{ color: searchOpen ? BRAND : '#404040', rotate: searchOpen ? 90 : 0 }}
+                animate={{ color: searchOpen ? 'var(--highlight)' : 'var(--ink-soft)', rotate: searchOpen ? 90 : 0 }}
                 transition={{ duration: 0.2 }}
-                className="p-2 hover:bg-white/[0.05] transition-colors shrink-0"
+                className="p-2 hover:bg-[var(--state-hover)] transition-colors shrink-0"
               >
                 {searchOpen ? <Xmark width={22} height={22} /> : <Search width={22} height={22} />}
               </motion.button>
             </div>
 
-            {/* ── Compose area ── */}
-            <div className="border-b border-[#181818]">
-              <form onSubmit={handlePostChisme}>
-                {/* Textarea row */}
-                <div className="px-4 pt-4 pb-2 flex gap-3">
-                  <ViewTransition name="user-avatar-compose">
-                    <Avatar seed={profile.avatarSeed} size={36} className="overflow-hidden shrink-0 mt-1" style={{ borderRadius: 0 }} />
-                  </ViewTransition>
-                  <TextareaAutosize
-                    ref={textareaRef}
-                    value={texto}
-                    onChange={e => setTexto(e.target.value)}
-                    onKeyDown={e => {
-                      if (e.key === 'Enter' && !e.shiftKey) {
-                        e.preventDefault()
-                        if (texto.trim() && !sending) handlePostChisme(e as unknown as React.FormEvent)
-                      }
-                    }}
-                    placeholder="¿Qué está pasando?"
-                    maxLength={500}
-                    minRows={2}
-                    className="flex-1 bg-transparent text-[15px] text-[#e0e0e0] placeholder-[#282828] resize-none outline-none leading-[1.6]"
-                  />
-                </div>
-
-                {/* Action row */}
-                <div className="px-4 pb-3 flex items-center justify-between border-t border-[#111]">
-                  <div className="flex items-center gap-3">
-                    <AnimatePresence>
-                      {texto.length > 0 && (
-                        <motion.span
-                          initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                          className="text-[11px] tabular-nums font-medium"
-                          style={{ color: texto.length > 450 ? '#e06030' : '#444' }}
-                        >
-                          {texto.length}/500
-                        </motion.span>
-                      )}
-                    </AnimatePresence>
-                    <motion.button
-                      type="button"
-                      onClick={() => setAnon(v => !v)}
-                      whileTap={{ scale: 0.88 }}
-                      animate={{ color: anon ? BRAND : '#333' }}
-                      transition={{ duration: 0.15 }}
-                      className="text-[10px] font-black uppercase tracking-widest px-2 py-1 border transition-colors"
-                      style={{ borderColor: anon ? BRAND : '#1c1c1c' }}
-                    >
-                      Anón
-                    </motion.button>
-                  </div>
-                  <div className="ml-auto flex items-center gap-2 pr-1">
-                    <AnimatePresence>
-                      {texto.trim() && (
-                        <motion.button
-                          type="button"
-                          onClick={() => startTransition(() => router.push('/cuestionario/nuevo'))}
-                          initial={{ opacity: 0, scale: 0.8 }}
-                          animate={{ opacity: 1, scale: 1 }}
-                          exit={{ opacity: 0, scale: 0.8 }}
-                          transition={{ duration: 0.15 }}
-                          whileTap={{ scale: 0.88 }}
-                          title="Crear cuestionario"
-                          className="p-2 hover:bg-white/[0.05] transition-colors"
-                          style={{ color: BRAND }}
-                        >
-                          <Notes width={18} height={18} />
-                        </motion.button>
-                      )}
-                    </AnimatePresence>
-                    <motion.button
-                      type="submit"
-                      disabled={!texto.trim() || sending}
-                      whileTap={texto.trim() ? { scale: 0.96 } : undefined}
-                      animate={{
-                        background: texto.trim() ? BRAND : '#141414',
-                        color: texto.trim() ? '#000' : '#282828',
+            {/* ── Compose ── */}
+            <div className="px-3 pt-4">
+              <PaperNote seed="compose" tape className="px-4 pt-4 pb-3">
+                <form onSubmit={handlePostChisme}>
+                  <div className="flex gap-3 pb-2">
+                    <ViewTransition name="user-avatar-compose">
+                      <Avatar seed={profile.avatarSeed} size={38} frame="tape" className="shrink-0 mt-1" />
+                    </ViewTransition>
+                    <TextareaAutosize
+                      ref={textareaRef}
+                      value={texto}
+                      onChange={e => setTexto(e.target.value)}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                          e.preventDefault()
+                          if (texto.trim() && !sending) handlePostChisme(e as unknown as React.FormEvent)
+                        }
                       }}
-                      transition={{ duration: 0.18 }}
-                      className="text-[12px] font-black uppercase tracking-widest px-6 py-2 disabled:cursor-not-allowed shrink-0"
-                    >
-                      {sending ? '…' : 'Publicar'}
-                    </motion.button>
+                      placeholder="escribe el chisme…"
+                      maxLength={500}
+                      minRows={2}
+                      className="flex-1 bg-transparent font-hand text-[20px] text-ink placeholder-ink-faint resize-none outline-none leading-[1.5]"
+                      style={secret ? { textDecoration: 'underline', textDecorationColor: 'var(--ink-soft)', textDecorationThickness: '8px', textUnderlineOffset: '-3px' } : undefined}
+                    />
                   </div>
-                </div>
-              </form>
+
+                  {/* Acciones */}
+                  <div className="flex items-center justify-between border-t border-line pt-3">
+                    <div className="flex items-center gap-2">
+                      <AnimatePresence>
+                        {texto.length > 0 && (
+                          <motion.span
+                            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                            className="text-[11px] tabular-nums font-mono"
+                            style={{ color: texto.length > 450 ? 'var(--state-error)' : 'var(--ink-faint)' }}
+                          >
+                            {texto.length}/500
+                          </motion.span>
+                        )}
+                      </AnimatePresence>
+                      <motion.button
+                        type="button"
+                        onClick={() => setAnon(v => !v)}
+                        whileTap={{ scale: 0.88 }}
+                        className="text-[10px] font-black uppercase tracking-widest px-2 py-1 border transition-colors"
+                        style={{ color: anon ? 'var(--highlight-ink)' : 'var(--ink-soft)', background: anon ? 'var(--highlight)' : 'transparent', borderColor: anon ? 'var(--highlight)' : 'var(--border)' }}
+                      >
+                        anón
+                      </motion.button>
+                      <motion.button
+                        type="button"
+                        onClick={() => setSecret(v => !v)}
+                        whileTap={{ scale: 0.88 }}
+                        title="tápalo: solo se revela al tocar"
+                        className="flex items-center gap-1 text-[10px] font-black uppercase tracking-widest px-2 py-1 border transition-colors"
+                        style={{ color: secret ? 'var(--marker-ink)' : 'var(--ink-soft)', background: secret ? 'var(--marker)' : 'transparent', borderColor: secret ? 'var(--marker)' : 'var(--border)' }}
+                      >
+                        <EyeClosed width={12} height={12} />
+                        tápalo
+                      </motion.button>
+                    </div>
+                    <div className="ml-auto flex items-center gap-2 pr-0.5">
+                      <AnimatePresence>
+                        {texto.trim() && (
+                          <motion.button
+                            type="button"
+                            onClick={() => startTransition(() => router.push('/cuestionario/nuevo'))}
+                            initial={{ opacity: 0, scale: 0.8 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.8 }}
+                            transition={{ duration: 0.15 }}
+                            whileTap={{ scale: 0.88 }}
+                            title="pasa una hoja (cuestionario)"
+                            className="p-2 hover:bg-[var(--state-hover)] transition-colors"
+                            style={{ color: 'var(--highlight)' }}
+                          >
+                            <Notes width={18} height={18} />
+                          </motion.button>
+                        )}
+                      </AnimatePresence>
+                      <motion.button
+                        type="submit"
+                        disabled={!texto.trim() || sending}
+                        whileTap={texto.trim() ? { scale: 0.96 } : undefined}
+                        className="text-[12px] font-black uppercase tracking-widest px-6 py-2 disabled:cursor-not-allowed shrink-0 transition-colors"
+                        style={{
+                          background: texto.trim() ? 'var(--highlight)' : 'var(--state-disabled-bg)',
+                          color: texto.trim() ? 'var(--highlight-ink)' : 'var(--state-disabled-ink)',
+                        }}
+                      >
+                        {sending ? '…' : 'pégalo'}
+                      </motion.button>
+                    </div>
+                  </div>
+                </form>
+              </PaperNote>
             </div>
 
-            {/* ── Search results ── */}
+            {/* ── Resultados de búsqueda ── */}
             <AnimatePresence>
               {searchOpen && debouncedQuery.trim() && (
                 <motion.div
@@ -430,70 +442,45 @@ export default function FeedPage() {
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
-                  className="border-b border-[#181818] overflow-hidden"
+                  className="border-b border-line overflow-hidden mt-2"
                 >
                   <AnimatePresence mode="wait">
                     {searchLoading ? (
-                      <motion.div
-                        key="searching"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        transition={{ duration: 0.15 }}
-                      >
-                        {/* Barra de escaneo */}
-                        <div className="relative h-[2px] w-full overflow-hidden bg-[#111]">
+                      <motion.div key="searching" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }}>
+                        <div className="relative h-[2px] w-full overflow-hidden bg-paper-sunken">
                           <motion.div
                             initial={{ x: '-100%' }}
                             animate={{ x: '400%' }}
                             transition={{ repeat: Infinity, duration: 0.9, ease: 'easeInOut' }}
                             className="absolute inset-y-0 w-1/4"
-                            style={{ background: `linear-gradient(to right, transparent, ${BRAND}, transparent)` }}
+                            style={{ background: `linear-gradient(to right, transparent, var(--highlight), transparent)` }}
                           />
                         </div>
-                        <div className="py-7 flex items-center justify-center gap-2 text-[11px] font-bold uppercase tracking-widest text-[#383838]">
-                          Buscando
+                        <div className="py-7 flex items-center justify-center gap-2 text-[11px] font-bold uppercase tracking-widest text-ink-soft">
+                          buscando
                           {[0, 1, 2].map(i => (
-                            <motion.span
-                              key={i}
-                              animate={{ opacity: [0.2, 1, 0.2] }}
-                              transition={{ repeat: Infinity, duration: 1, delay: i * 0.18 }}
-                              style={{ color: BRAND }}
-                            >
-                              ·
-                            </motion.span>
+                            <motion.span key={i} animate={{ opacity: [0.2, 1, 0.2] }} transition={{ repeat: Infinity, duration: 1, delay: i * 0.18 }} style={{ color: 'var(--highlight)' }}>·</motion.span>
                           ))}
                         </div>
                       </motion.div>
                     ) : searchResults.length === 0 ? (
-                      <motion.div
-                        key="empty"
-                        initial={{ opacity: 0, y: 6 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0 }}
-                        transition={{ duration: 0.2 }}
-                        className="py-8 text-center text-[11px] font-bold uppercase tracking-widest text-[#1c1c1c]"
-                      >
-                        Sin resultados.
+                      <motion.div key="empty" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}
+                        className="py-8 text-center font-hand text-[16px] text-ink-faint">
+                        nada por aquí. ¿lo escribiste bien?
                       </motion.div>
                     ) : (
-                      <motion.div
-                        key="results"
-                        variants={staggerContainer}
-                        initial="hidden"
-                        animate="show"
-                      >
+                      <motion.div key="results" variants={staggerContainer} initial="hidden" animate="show">
                         {searchResults.map(c => (
                           <motion.div
                             key={c.id}
                             variants={staggerItem}
                             onClick={() => startTransition(() => router.push(`/chisme/${c.id}`))}
-                            className="px-4 py-4 border-b border-[#181818] flex gap-3 cursor-pointer hover:bg-white/[0.02] transition-colors"
+                            className="px-4 py-4 border-b border-line flex gap-3 cursor-pointer hover:bg-[var(--state-hover)] transition-colors"
                           >
-                            <Avatar seed={c.avatar_seed} size={32} className="overflow-hidden shrink-0" style={{ borderRadius: 0 }} />
+                            <Avatar seed={c.avatar_seed} size={32} frame="tape" className="shrink-0" />
                             <div className="flex-1 min-w-0">
-                              <span className="text-[11px] font-bold uppercase tracking-widest text-white">{c.username}</span>
-                              <p className="text-[14px] text-[#d0d0d0] leading-[1.6] mt-1">{c.texto}</p>
+                              <span className="text-[11px] font-bold uppercase tracking-widest text-ink-soft">{c.username}</span>
+                              <p className="font-hand text-[18px] text-ink leading-[1.4] mt-1">{c.texto}</p>
                             </div>
                           </motion.div>
                         ))}
@@ -506,27 +493,24 @@ export default function FeedPage() {
 
             {/* ── Feed ── */}
             {loading ? (
-              <div className="flex flex-col">
-                {[...Array(6)].map((_, i) => (
-                  <div key={i} className="px-4 py-4 border-b border-[#181818] flex gap-3">
-                    <motion.div animate={{ opacity: [0.04, 0.1, 0.04] }} transition={{ repeat: Infinity, duration: 1.8, delay: i * 0.1 }} className="w-9 h-9 bg-white shrink-0" style={{ borderRadius: 0 }} />
-                    <div className="flex-1 flex flex-col gap-2.5 pt-1">
-                      <div className="flex justify-between">
-                        <motion.div animate={{ opacity: [0.04, 0.1, 0.04] }} transition={{ repeat: Infinity, duration: 1.8, delay: i * 0.1 + 0.05 }} className="h-2 bg-white w-20" />
-                        <motion.div animate={{ opacity: [0.04, 0.1, 0.04] }} transition={{ repeat: Infinity, duration: 1.8, delay: i * 0.1 + 0.05 }} className="h-2 bg-white w-8" />
-                      </div>
-                      <motion.div animate={{ opacity: [0.04, 0.1, 0.04] }} transition={{ repeat: Infinity, duration: 1.8, delay: i * 0.1 + 0.1 }} className="h-2 bg-white w-full" />
-                      <motion.div animate={{ opacity: [0.04, 0.1, 0.04] }} transition={{ repeat: Infinity, duration: 1.8, delay: i * 0.1 + 0.15 }} className="h-2 bg-white w-3/4" />
+              <div className="flex flex-col gap-4 px-3 py-4">
+                {[...Array(5)].map((_, i) => (
+                  <div key={i} className="note px-4 py-4 flex gap-3">
+                    <motion.div animate={{ opacity: [0.06, 0.16, 0.06] }} transition={{ repeat: Infinity, duration: 1.8, delay: i * 0.1 }} className="w-9 h-9 bg-ink shrink-0" />
+                    <div className="flex-1 flex flex-col gap-3 pt-1">
+                      <motion.div animate={{ opacity: [0.06, 0.16, 0.06] }} transition={{ repeat: Infinity, duration: 1.8, delay: i * 0.1 + 0.05 }} className="h-2.5 bg-ink w-24" />
+                      <motion.div animate={{ opacity: [0.06, 0.16, 0.06] }} transition={{ repeat: Infinity, duration: 1.8, delay: i * 0.1 + 0.1 }} className="h-2.5 bg-ink w-full" />
+                      <motion.div animate={{ opacity: [0.06, 0.16, 0.06] }} transition={{ repeat: Infinity, duration: 1.8, delay: i * 0.1 + 0.15 }} className="h-2.5 bg-ink w-3/4" />
                     </div>
                   </div>
                 ))}
               </div>
             ) : feed.length === 0 ? (
               <motion.div variants={slideDown} initial="hidden" animate="show" className="flex flex-col items-center gap-2 py-24">
-                <p className="text-[14px] font-bold uppercase tracking-widest text-[#1c1c1c]">Sin chismes aún</p>
+                <p className="font-hand text-[20px] text-ink-faint">el cuaderno está en blanco… empieza tú.</p>
               </motion.div>
             ) : (
-              <motion.div variants={staggerContainer} initial="hidden" animate="show">
+              <motion.div variants={staggerContainer} initial="hidden" animate="show" className="flex flex-col gap-4 px-3 py-4">
                 <AnimatePresence initial={false}>
                   {feed.map((item, i) => (
                     item.type === 'chisme' ? (
@@ -536,46 +520,51 @@ export default function FeedPage() {
                         initial="hidden"
                         animate="show"
                         exit={{ opacity: 0 }}
-                        className="border-b border-[#181818]"
                       >
                         <ViewTransition name={`post-${item.data.id}`}>
-                          <article className="px-4 py-4 flex gap-3">
-                            <div className="shrink-0 mt-0.5">
-                              <ViewTransition name={`avatar-${item.data.id}`}>
-                                <Avatar seed={item.data.avatar_seed} size={36} className="overflow-hidden" style={{ borderRadius: 0 }} />
-                              </ViewTransition>
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center justify-between mb-1.5">
-                                <span className="text-[11px] font-bold uppercase tracking-widest text-white">{item.data.username}</span>
-                                <span className="text-[11px] text-[#333]">{timeAgo(item.data.created_at)}</span>
+                          <PaperNote seed={item.data.id} tape>
+                            <article className="px-4 py-4 flex gap-3">
+                              <div className="shrink-0 mt-0.5">
+                                <ViewTransition name={`avatar-${item.data.id}`}>
+                                  <Avatar seed={item.data.avatar_seed} size={38} frame="tape" />
+                                </ViewTransition>
                               </div>
-                              <p className="text-[15px] text-[#d0d0d0] leading-[1.65] whitespace-pre-wrap break-words">
-                                {item.data.texto}
-                              </p>
-                              <div className="flex items-center gap-5 mt-3">
-                                <motion.button onClick={() => handleLike(item.data.id)} whileTap={!liked[item.data.id] ? { scale: 0.85 } : undefined} className="flex items-center gap-2">
-                                  <motion.div animate={liked[item.data.id] ? { scale: [1, 1.3, 1] } : { scale: 1 }} transition={{ duration: 0.22 }}>
-                                    {liked[item.data.id]
-                                      ? <HeartSolid width={15} height={15} style={{ color: BRAND }} />
-                                      : <Heart width={15} height={15} color="#404040" />
-                                    }
-                                  </motion.div>
-                                  <CounterFlip count={item.data.like_count} active={!!liked[item.data.id]} large />
-                                </motion.button>
-                                <motion.button onClick={() => startTransition(() => router.push(`/chisme/${item.data.id}`))} whileTap={{ scale: 0.85 }} className="flex items-center gap-2">
-                                  <MessageText width={15} height={15} color="#404040" />
-                                  <CounterFlip count={item.data.comment_count} active={false} large />
-                                </motion.button>
-                                <motion.button onClick={() => handleRepost(item.data)} whileTap={!reposted[item.data.id] ? { scale: 0.85 } : undefined} className="flex items-center gap-2">
-                                  <motion.div animate={{ rotate: reposted[item.data.id] ? 360 : 0 }} transition={{ duration: 0.4 }}>
-                                    <Refresh width={15} height={15} color={reposted[item.data.id] ? BRAND : '#404040'} />
-                                  </motion.div>
-                                  <CounterFlip count={item.data.repost_count} active={!!reposted[item.data.id]} large />
-                                </motion.button>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center justify-between mb-1.5">
+                                  <span className="text-[11px] font-bold uppercase tracking-widest text-ink-soft">{item.data.username}</span>
+                                  <span className="text-[11px] text-ink-faint font-mono">{timeAgo(item.data.created_at)}</span>
+                                </div>
+                                {item.data.secreto ? (
+                                  <SecretText text={item.data.texto} className="font-hand text-[20px] text-ink leading-[1.45] whitespace-pre-wrap break-words" />
+                                ) : (
+                                  <p className="font-hand text-[20px] text-ink leading-[1.45] whitespace-pre-wrap break-words">
+                                    {item.data.texto}
+                                  </p>
+                                )}
+                                <div className="flex items-center gap-5 mt-3">
+                                  <motion.button onClick={() => handleLike(item.data.id)} whileTap={!liked[item.data.id] ? { scale: 0.85 } : undefined} className="flex items-center gap-2">
+                                    <motion.div animate={liked[item.data.id] ? { scale: [1, 1.3, 1] } : { scale: 1 }} transition={{ duration: 0.22 }}>
+                                      {liked[item.data.id]
+                                        ? <HeartSolid width={15} height={15} style={{ color: 'var(--highlight)' }} />
+                                        : <Heart width={15} height={15} color="var(--ink-soft)" />
+                                      }
+                                    </motion.div>
+                                    <CounterFlip count={item.data.like_count} active={!!liked[item.data.id]} large />
+                                  </motion.button>
+                                  <motion.button onClick={() => startTransition(() => router.push(`/chisme/${item.data.id}`))} whileTap={{ scale: 0.85 }} className="flex items-center gap-2">
+                                    <MessageText width={15} height={15} color="var(--ink-soft)" />
+                                    <CounterFlip count={item.data.comment_count} active={false} large />
+                                  </motion.button>
+                                  <motion.button onClick={() => handleRepost(item.data)} whileTap={!reposted[item.data.id] ? { scale: 0.85 } : undefined} className="flex items-center gap-2">
+                                    <motion.div animate={{ rotate: reposted[item.data.id] ? 360 : 0 }} transition={{ duration: 0.4 }}>
+                                      <Refresh width={15} height={15} color={reposted[item.data.id] ? 'var(--highlight)' : 'var(--ink-soft)'} />
+                                    </motion.div>
+                                    <CounterFlip count={item.data.repost_count} active={!!reposted[item.data.id]} large />
+                                  </motion.button>
+                                </div>
                               </div>
-                            </div>
-                          </article>
+                            </article>
+                          </PaperNote>
                         </ViewTransition>
                       </motion.div>
                     ) : item.type === 'repost' ? (
@@ -585,38 +574,36 @@ export default function FeedPage() {
                         initial="hidden"
                         animate="show"
                         exit={{ opacity: 0 }}
-                        className="border-b border-[#181818]"
                       >
-                        <article className="px-4 pt-3 pb-4">
-                          {/* Etiqueta de repost */}
-                          <div className="flex items-center gap-1.5 mb-2 pl-[2px] text-[10px] font-black uppercase tracking-widest text-[#383838]">
-                            <Refresh width={12} height={12} style={{ color: BRAND }} />
-                            <span>{item.data.username} reposteó</span>
-                            <span className="text-[#222] ml-auto font-medium normal-case tracking-normal text-[11px]">{timeAgo(item.data.created_at)}</span>
-                          </div>
-
-                          {/* Cita opcional */}
-                          {item.data.texto && (
-                            <p className="text-[15px] text-[#d0d0d0] leading-[1.65] whitespace-pre-wrap break-words mb-3 pl-[2px]">
-                              {item.data.texto}
-                            </p>
-                          )}
-
-                          {/* Chisme original embebido (clickable) */}
-                          <div
-                            onClick={() => startTransition(() => router.push(`/chisme/${item.data.chisme.id}`))}
-                            className="border border-[#181818] px-3 py-3 flex gap-3 cursor-pointer hover:bg-white/[0.02] transition-colors"
-                          >
-                            <Avatar seed={item.data.chisme.avatar_seed} size={28} className="overflow-hidden shrink-0 mt-0.5" style={{ borderRadius: 0 }} />
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center justify-between mb-1">
-                                <span className="text-[11px] font-bold uppercase tracking-widest text-[#909090]">{item.data.chisme.username}</span>
-                                <span className="text-[11px] text-[#303030]">{timeAgo(item.data.chisme.created_at)}</span>
-                              </div>
-                              <p className="text-[14px] text-[#b0b0b0] leading-[1.6] whitespace-pre-wrap break-words">{item.data.chisme.texto}</p>
+                        <PaperNote seed={item.data.id}>
+                          <article className="px-4 pt-3 pb-4">
+                            <div className="flex items-center gap-1.5 mb-2 text-[10px] font-black uppercase tracking-widest text-ink-soft">
+                              <Refresh width={12} height={12} style={{ color: 'var(--highlight)' }} />
+                              <span>{item.data.username} lo pasó</span>
+                              <span className="text-ink-faint ml-auto font-mono normal-case tracking-normal text-[11px]">{timeAgo(item.data.created_at)}</span>
                             </div>
-                          </div>
-                        </article>
+
+                            {item.data.texto && (
+                              <p className="font-hand text-[19px] text-ink leading-[1.45] whitespace-pre-wrap break-words mb-3">
+                                {item.data.texto}
+                              </p>
+                            )}
+
+                            <div
+                              onClick={() => startTransition(() => router.push(`/chisme/${item.data.chisme.id}`))}
+                              className="border border-line bg-paper px-3 py-3 flex gap-3 cursor-pointer hover:bg-[var(--state-hover)] transition-colors"
+                            >
+                              <Avatar seed={item.data.chisme.avatar_seed} size={28} frame="tape" className="shrink-0 mt-0.5" />
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center justify-between mb-1">
+                                  <span className="text-[11px] font-bold uppercase tracking-widest text-ink-soft">{item.data.chisme.username}</span>
+                                  <span className="text-[11px] text-ink-faint font-mono">{timeAgo(item.data.chisme.created_at)}</span>
+                                </div>
+                                <p className="font-hand text-[17px] text-ink-soft leading-[1.4] whitespace-pre-wrap break-words">{item.data.chisme.texto}</p>
+                              </div>
+                            </div>
+                          </article>
+                        </PaperNote>
                       </motion.div>
                     ) : (
                       <motion.div
@@ -625,11 +612,13 @@ export default function FeedPage() {
                         initial="hidden"
                         animate="show"
                       >
-                        <CuestionarioCard
-                          cuestionario={item.data}
-                          onParticipate={openCuestionario}
-                          alreadyAnswered={answered.includes(item.data.id)}
-                        />
+                        <PaperNote seed={item.data.id}>
+                          <CuestionarioCard
+                            cuestionario={item.data}
+                            onParticipate={openCuestionario}
+                            alreadyAnswered={answered.includes(item.data.id)}
+                          />
+                        </PaperNote>
                       </motion.div>
                     )
                   ))}
@@ -639,14 +628,14 @@ export default function FeedPage() {
 
                 {loadingMore && (
                   <div className="flex justify-center py-6">
-                    <motion.div animate={{ opacity: [0.2, 0.6, 0.2] }} transition={{ repeat: Infinity, duration: 1.2 }} className="text-[11px] font-bold uppercase tracking-widest text-[#282828]">
-                      Cargando…
+                    <motion.div animate={{ opacity: [0.2, 0.6, 0.2] }} transition={{ repeat: Infinity, duration: 1.2 }} className="text-[11px] font-bold uppercase tracking-widest text-ink-faint">
+                      pasando hoja…
                     </motion.div>
                   </div>
                 )}
 
                 {!hasMore && chismes.length > 0 && (
-                  <p className="text-center text-[11px] font-bold uppercase tracking-widest text-[#181818] py-8">— fin —</p>
+                  <p className="text-center font-hand text-[16px] text-ink-faint py-8">se acabó el cuaderno por hoy.</p>
                 )}
               </motion.div>
             )}

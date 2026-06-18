@@ -12,7 +12,7 @@ export default function ClientShell({ children }: { children: React.ReactNode })
   if (!showSidebar) return <>{children}</>
 
   return (
-    <div className="h-screen overflow-hidden bg-black text-[#f0f0f0] flex">
+    <div className="h-screen overflow-hidden bg-paper text-ink flex">
       <AppSidebar />
       <div className="flex-1 min-w-0 h-full overflow-hidden">
         {children}

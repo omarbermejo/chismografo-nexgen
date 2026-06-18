@@ -1,27 +1,241 @@
 @import "tailwindcss";
 
+/* ════════════════════════════════════════════════════════════════
+   CHISMÓGRAFO — "El Cuaderno"
+   Capa 1: tokens semánticos. Default = NOCHE (pizarrón) en :root.
+   ════════════════════════════════════════════════════════════════ */
 :root {
-  --background: #000000;
-  --foreground: #f0f0f0;
+  --paper: #14161a;
+  --paper-raised: #1b1e24;
+  --paper-sunken: #0f1115;
+
+  --ink: #e9e6dc;
+  --ink-soft: #a7a294;
+  --ink-faint: #5c5e66;
+  --ink-ghost: #34363d;
+  --pen: #7e9bff;
+
+  --line: #262a33;
+  --margin: #7a3a3a;
+
+  --highlight: #39e079;
+  --highlight-ink: #072011;
+  --highlight-soft: rgba(57, 224, 121, 0.10);
+
+  --marker: #ff6ba3;
+  --marker-ink: #2a0814;
+
+  --border: #23262d;
+  --border-strong: #e9e6dc;
+  --tape: rgba(126, 155, 255, 0.10);
+
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.5), 0 10px 28px rgba(0, 0, 0, 0.38);
+
+  --state-hover: rgba(255, 255, 255, 0.04);
+  --state-active: rgba(255, 255, 255, 0.07);
+  --state-disabled-bg: #1a1c21;
+  --state-disabled-ink: #4a4c54;
+  --state-error: #ff7a6e;
+  --state-success: #39e079;
+
+  color-scheme: dark;
 }
 
+/* Override: DÍA (papel crema) */
+[data-theme="light"] {
+  --paper: #f2ecd9;
+  --paper-raised: #fbf7ec;
+  --paper-sunken: #e8e0c8;
+
+  --ink: #1e2742;
+  --ink-soft: #4a5478;
+  --ink-faint: #9aa0b5;
+  --ink-ghost: #c9c4b0;
+  --pen: #2b3a8c;
+
+  --line: #b9c7e8;
+  --margin: #e0584f;
+
+  --highlight: #39e079;
+  --highlight-ink: #0a2a14;
+  --highlight-soft: rgba(57, 224, 121, 0.14);
+
+  --marker: #e8407a;
+  --marker-ink: #3a0e1f;
+
+  --border: #d8d0b8;
+  --border-strong: #1e2742;
+  --tape: rgba(43, 58, 140, 0.10);
+
+  --shadow: 0 1px 2px rgba(30, 39, 66, 0.10), 0 10px 28px rgba(30, 39, 66, 0.07);
+
+  --state-hover: rgba(30, 39, 66, 0.04);
+  --state-active: rgba(30, 39, 66, 0.08);
+  --state-disabled-bg: #e2dac4;
+  --state-disabled-ink: #b3ab95;
+  --state-error: #c9453c;
+  --state-success: #1f9e54;
+
+  color-scheme: light;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   Capa 2: bridge a utilidades Tailwind. `inline` permite que las
+   utilidades (bg-paper, text-ink…) lean la var viva y cambien al
+   togglear data-theme en runtime.
+   ════════════════════════════════════════════════════════════════ */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-poppins);
+  --color-paper: var(--paper);
+  --color-paper-raised: var(--paper-raised);
+  --color-paper-sunken: var(--paper-sunken);
+
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-ink-faint: var(--ink-faint);
+  --color-ink-ghost: var(--ink-ghost);
+  --color-pen: var(--pen);
+
+  --color-line: var(--line);
+  --color-margin: var(--margin);
+
+  --color-highlight: var(--highlight);
+  --color-highlight-ink: var(--highlight-ink);
+  --color-marker: var(--marker);
+  --color-marker-ink: var(--marker-ink);
+
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+
+  --font-hand: var(--font-caveat);
+  --font-hand-title: var(--font-patrick);
+  --font-sans: var(--font-archivo);
+  --font-mono: var(--font-spline-mono);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: var(--font-poppins), sans-serif;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-archivo), system-ui, sans-serif;
+  transition: background-color 0.25s ease, color 0.25s ease;
 }
 
-* {
-  box-sizing: border-box;
-}
+* { box-sizing: border-box; }
 
-/* Brutalist scrollbar */
+/* Scrollbar por token */
 ::-webkit-scrollbar { width: 2px; }
-::-webkit-scrollbar-track { background: #000; }
-::-webkit-scrollbar-thumb { background: #1c1c1c; }
+::-webkit-scrollbar-track { background: var(--paper); }
+::-webkit-scrollbar-thumb { background: var(--border); }
+
+/* ════════════════════════════════════════════════════════════════
+   Superficie de papel rayado
+   ════════════════════════════════════════════════════════════════ */
+.ruled {
+  background-color: var(--paper);
+  background-image:
+    linear-gradient(to right, transparent 46px, var(--margin) 46px, var(--margin) 47px, transparent 47px),
+    repeating-linear-gradient(var(--paper), var(--paper) 31px, var(--line) 31px, var(--line) 32px);
+  background-attachment: local;
+}
+/* En noche el pizarrón es más limpio: renglones muy tenues, sin margen rojo fuerte */
+:root .ruled {
+  background-image:
+    repeating-linear-gradient(var(--paper), var(--paper) 31px, var(--line) 31px, var(--line) 32px);
+}
+[data-theme="light"] .ruled {
+  background-image:
+    linear-gradient(to right, transparent 46px, var(--margin) 46px, var(--margin) 47px, transparent 47px),
+    repeating-linear-gradient(var(--paper), var(--paper) 31px, var(--line) 31px, var(--line) 32px);
+}
+
+/* ════════════════════════════════════════════════════════════════
+   Nota / hoja (PaperNote). El tilt lo inyecta el componente vía --tilt.
+   ════════════════════════════════════════════════════════════════ */
+.note {
+  position: relative;
+  background: var(--paper-raised);
+  box-shadow: var(--shadow);
+  transform: rotate(var(--tilt, 0deg));
+  border-radius: 2px;
+}
+
+/* Washi tape — trozo translúcido pegado arriba */
+.note--tape::before {
+  content: "";
+  position: absolute;
+  top: -9px;
+  left: 26px;
+  width: 74px;
+  height: 22px;
+  background: var(--tape);
+  opacity: 0.9;
+  transform: rotate(-4deg);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+  -webkit-mask: repeating-linear-gradient(90deg, #000 0 5px, transparent 5px 6px);
+  mask: repeating-linear-gradient(90deg, #000 0 5px, transparent 5px 6px);
+}
+
+/* ════════════════════════════════════════════════════════════════
+   Secreto tachado — signature. Cada palabra es un <span class="redacted">.
+   ════════════════════════════════════════════════════════════════ */
+.redacted {
+  color: transparent;
+  user-select: none;
+  background: linear-gradient(91deg, var(--ink) 0%, var(--ink-soft) 50%, var(--ink) 100%);
+  border-radius: 2px 6px 3px 7px / 6px 3px 7px 2px;
+  box-shadow: 0 0 0 1px var(--ink), 1px 1px 2px rgba(0, 0, 0, 0.35) inset;
+  padding: 0 3px;
+  display: inline;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+.redacted:nth-child(2n) { border-radius: 6px 2px 7px 3px / 3px 7px 2px 6px; transform: rotate(0.5deg); }
+.redacted:nth-child(3n) { transform: rotate(-0.6deg); }
+
+/* ════════════════════════════════════════════════════════════════
+   Marcos de avatar
+   ════════════════════════════════════════════════════════════════ */
+.frame-polaroid {
+  background: #fbf7ec;
+  padding: 4px 4px 11px 4px;
+  box-shadow: var(--shadow);
+  transform: rotate(var(--frame-tilt, -2deg));
+}
+[data-theme="light"] .frame-polaroid { background: #fff; }
+:root .frame-polaroid { background: #f3efe4; }
+
+.frame-tape {
+  position: relative;
+  transform: rotate(var(--frame-tilt, -2deg));
+}
+.frame-tape::after {
+  content: "";
+  position: absolute;
+  top: -6px;
+  left: 50%;
+  transform: translateX(-50%) rotate(-5deg);
+  width: 60%;
+  height: 11px;
+  background: var(--tape);
+  opacity: 0.9;
+}
+
+.frame-stamp {
+  border: 2px solid var(--margin);
+  border-radius: 50%;
+  overflow: hidden;
+  transform: rotate(var(--frame-tilt, -8deg));
+}
+
+/* Trazo de resaltador detrás de un texto (títulos destacados) */
+.highlighted {
+  background: linear-gradient(120deg, var(--highlight-soft), var(--highlight-soft));
+  box-shadow: -2px 0 0 var(--highlight-soft), 2px 0 0 var(--highlight-soft);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

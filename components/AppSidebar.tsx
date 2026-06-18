@@ -3,22 +3,22 @@
 import { useEffect, useState, startTransition } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import { motion } from 'framer-motion'
-import { HomeSimple, FireFlame, Notes, LogOut } from 'iconoir-react'
+import { Journal, FireFlame, EditPencil, LogOut, SunLight, HalfMoon } from 'iconoir-react'
 import { ViewTransition } from 'react'
 import { getProfile, clearProfile, type Profile } from '@/lib/profile'
+import { useTheme } from '@/lib/theme'
 import Avatar from '@/components/Avatar'
 
-const BRAND = '#39e079'
-
 const NAV = [
-  { label: 'Feed',     icon: HomeSimple, path: '/feed' },
-  { label: 'Trending', icon: FireFlame,  path: '/trending' },
+  { label: 'feed', icon: Journal, path: '/feed' },
+  { label: 'lo más chismeado', icon: FireFlame, path: '/trending' },
 ]
 
 export default function AppSidebar() {
-  const router   = useRouter()
+  const router = useRouter()
   const pathname = usePathname()
   const [profile, setProfile] = useState<Profile | null>(null)
+  const { theme, toggle } = useTheme()
 
   useEffect(() => { setProfile(getProfile()) }, [])
 
@@ -27,21 +27,21 @@ export default function AppSidebar() {
       initial={{ x: -240, opacity: 0 }}
       animate={{ x: 0, opacity: 1 }}
       transition={{ type: 'spring', stiffness: 280, damping: 28 }}
-      className="w-[220px] shrink-0 h-full border-r border-[#181818] flex flex-col bg-black"
+      className="w-[220px] shrink-0 h-full border-r border-line flex flex-col bg-paper-sunken"
     >
-      {/* ── Logo ── */}
+      {/* ── Lomo / logo ── */}
       <motion.div
         initial={{ opacity: 0, y: -6 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.12, duration: 0.3 }}
-        className="px-5 pt-7 pb-6 border-b border-[#181818] select-none"
+        className="px-5 pt-7 pb-6 border-b border-line select-none"
       >
-        <span className="text-[26px] font-black tracking-tighter text-white leading-none block">
-          CHISMÓ<br />GRAFO
+        <span className="font-hand-title text-[30px] text-ink leading-[0.95] block">
+          Chismó<br />grafo
         </span>
       </motion.div>
 
-      {/* ── Nav items ── */}
+      {/* ── Pestañas ── */}
       <nav className="flex flex-col px-3 py-4 gap-0.5 flex-1">
         {NAV.map((item, i) => {
           const isActive =
@@ -55,29 +55,26 @@ export default function AppSidebar() {
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.16 + i * 0.07, duration: 0.28 }}
               onClick={() => startTransition(() => router.push(item.path))}
-              whileHover={!isActive ? { backgroundColor: 'rgba(255,255,255,0.03)' } : undefined}
+              whileHover={!isActive ? { backgroundColor: 'var(--state-hover)' } : undefined}
               whileTap={{ scale: 0.97 }}
               className="relative flex items-center gap-3 px-3 py-2.5 text-left w-full transition-colors"
             >
-              {/* Active indicator */}
+              {/* Trazo de resaltador activo */}
               {isActive && (
                 <motion.div
                   layoutId="nav-active"
-                  className="absolute left-0 top-1.5 bottom-1.5 w-[3px]"
-                  style={{ background: BRAND }}
+                  className="absolute inset-0 -z-0"
+                  style={{ background: 'var(--highlight-soft)', borderLeft: '3px solid var(--highlight)' }}
                   transition={{ type: 'spring', stiffness: 400, damping: 32 }}
                 />
               )}
-              <motion.div
-                animate={{ color: isActive ? BRAND : '#383838' }}
-                transition={{ duration: 0.2 }}
-              >
+              <motion.div animate={{ color: isActive ? 'var(--highlight)' : 'var(--ink-soft)' }} transition={{ duration: 0.2 }} className="relative z-10">
                 <item.icon width={16} height={16} />
               </motion.div>
               <motion.span
-                animate={{ color: isActive ? BRAND : '#383838' }}
+                animate={{ color: isActive ? 'var(--ink)' : 'var(--ink-soft)' }}
                 transition={{ duration: 0.2 }}
-                className="text-[12px] font-black uppercase tracking-widest"
+                className="text-[12px] font-black uppercase tracking-widest relative z-10"
               >
                 {item.label}
               </motion.span>
@@ -85,59 +82,70 @@ export default function AppSidebar() {
           )
         })}
 
-        {/* ── Divider ── */}
         <motion.div
           initial={{ opacity: 0 }} animate={{ opacity: 1 }}
           transition={{ delay: 0.32 }}
-          className="mx-3 my-3 border-t border-[#111]"
+          className="mx-3 my-3 border-t border-line"
         />
 
-        {/* ── Nueva encuesta ── */}
+        {/* ── Pasa una hoja ── */}
         <motion.button
           initial={{ opacity: 0, x: -14 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.34, duration: 0.28 }}
           onClick={() => startTransition(() => router.push('/cuestionario/nuevo'))}
-          whileHover={{ backgroundColor: 'rgba(57,224,121,0.04)' }}
+          whileHover={{ backgroundColor: 'var(--highlight-soft)' }}
           whileTap={{ scale: 0.97 }}
           className="flex items-center gap-3 px-3 py-2.5 text-left w-full transition-colors"
         >
-          <Notes width={16} height={16} style={{ color: BRAND }} />
-          <span className="text-[12px] font-black uppercase tracking-widest" style={{ color: BRAND }}>
-            Nueva encuesta
+          <EditPencil width={16} height={16} style={{ color: 'var(--highlight)' }} />
+          <span className="text-[12px] font-black uppercase tracking-widest" style={{ color: 'var(--highlight)' }}>
+            pasa una hoja
           </span>
         </motion.button>
       </nav>
 
-      {/* ── Profile ── */}
+      {/* ── Toggle de tema ── */}
+      <motion.button
+        initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+        transition={{ delay: 0.36, duration: 0.28 }}
+        onClick={toggle}
+        whileTap={{ scale: 0.96 }}
+        className="mx-3 mb-1 flex items-center gap-3 px-3 py-2.5 text-left transition-colors hover:bg-[var(--state-hover)]"
+        title={theme === 'dark' ? 'pasar a modo día' : 'pasar a modo noche'}
+      >
+        {theme === 'dark'
+          ? <SunLight width={16} height={16} color="var(--ink-soft)" />
+          : <HalfMoon width={16} height={16} color="var(--ink-soft)" />
+        }
+        <span className="text-[11px] font-bold uppercase tracking-widest text-ink-soft">
+          {theme === 'dark' ? 'modo día' : 'modo noche'}
+        </span>
+      </motion.button>
+
+      {/* ── Perfil ── */}
       {profile && (
         <motion.div
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.38, duration: 0.28 }}
-          className="px-4 py-4 border-t border-[#181818] flex items-center gap-3"
+          className="px-4 py-4 border-t border-line flex items-center gap-3"
         >
           <ViewTransition name="user-avatar">
-            <Avatar
-              seed={profile.avatarSeed}
-              size={30}
-              className="overflow-hidden shrink-0"
-              style={{ borderRadius: 0 }}
-            />
+            <Avatar seed={profile.avatarSeed} size={32} frame="tape" className="shrink-0" />
           </ViewTransition>
           <div className="flex-1 min-w-0">
-            <p className="text-[11px] font-black uppercase tracking-widest text-white truncate">
+            <p className="text-[11px] font-black uppercase tracking-widest text-ink truncate">
               {profile.username}
             </p>
           </div>
           <motion.button
             onClick={() => { clearProfile(); router.replace('/setup') }}
             whileTap={{ scale: 0.88 }}
-            title="Cerrar sesión"
-            className="shrink-0 p-1.5 transition-colors"
-            whileHover={{ backgroundColor: 'rgba(255,255,255,0.05)' }}
+            title="cerrar el cuaderno"
+            className="shrink-0 p-1.5 transition-colors hover:bg-[var(--state-hover)]"
           >
-            <LogOut width={14} height={14} color="#383838" />
+            <LogOut width={14} height={14} color="var(--ink-soft)" />
           </motion.button>
         </motion.div>
       )}

@@ -8,8 +8,8 @@ import { toast } from 'sonner'
 import { getProfile, type Profile } from '@/lib/profile'
 import { postCuestionario, type Cuestionario } from '@/lib/api'
 import CuestionarioCard from '@/components/CuestionarioCard'
+import PaperNote from '@/components/PaperNote'
 
-const BRAND = '#39e079'
 const HEADER_H = 56
 
 interface PreguntaItem {
@@ -65,10 +65,10 @@ export default function NuevoCuestionarioPage() {
         profile.username,
         profile.avatarSeed,
       )
-      toast.success('¡Cuestionario publicado!')
+      toast.success('lo soltaste al cuaderno.')
       router.replace('/feed')
     } catch {
-      toast.error('Error al publicar.')
+      toast.error('No se pudo. Inténtalo otra vez.')
       setSending(false)
     }
   }
@@ -77,7 +77,7 @@ export default function NuevoCuestionarioPage() {
 
   const preview: Cuestionario = {
     id: 'preview',
-    titulo: titulo || 'Tu título aquí',
+    titulo: titulo || 'tu pregunta aquí',
     username: profile.username,
     avatar_seed: profile.avatarSeed,
     created_at: new Date().toISOString(),
@@ -86,7 +86,7 @@ export default function NuevoCuestionarioPage() {
   }
 
   return (
-    <div className="h-full flex flex-col overflow-hidden bg-black text-[#f0f0f0]">
+    <div className="h-full flex flex-col overflow-hidden bg-paper text-ink">
 
       {/* Header */}
       <motion.header
@@ -94,39 +94,39 @@ export default function NuevoCuestionarioPage() {
         animate={{ opacity: 1 }}
         transition={{ duration: 0.2 }}
         style={{ height: HEADER_H }}
-        className="shrink-0 z-20 bg-black border-b border-[#181818]"
+        className="shrink-0 z-20 bg-paper border-b border-line"
       >
         <div className="h-full max-w-[600px] mx-auto px-3 flex items-center gap-4">
           <motion.button
             onClick={() => router.back()}
             whileTap={{ scale: 0.9 }}
-            className="p-2 -ml-2 hover:bg-white/[0.05] transition-colors"
+            className="p-2 -ml-2 hover:bg-[var(--state-hover)] transition-colors"
           >
-            <ArrowLeft width={18} height={18} color="#f0f0f0" />
+            <ArrowLeft width={18} height={18} color="var(--ink)" />
           </motion.button>
-          <span className="text-[14px] font-black uppercase tracking-widest text-white">
-            Nuevo Cuestionario
+          <span className="text-[13px] font-black uppercase tracking-widest text-ink">
+            arma el cuaderno
           </span>
         </div>
       </motion.header>
 
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto ruled">
       <div className="max-w-[600px] mx-auto px-4 pb-4">
 
-        {/* ── Título ── */}
+        {/* ── Tema ── */}
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.05, duration: 0.3 }}
-          className="py-6 border-b border-[#181818]"
+          className="py-6 border-b border-line"
         >
           <div className="flex items-center justify-between mb-3">
-            <span className="text-[10px] font-black uppercase tracking-widest text-[#282828]">Título</span>
+            <span className="text-[10px] font-black uppercase tracking-widest text-ink-soft">la pregunta de portada</span>
             <AnimatePresence>
               {titulo.length > 0 && (
                 <motion.span
                   initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                  className="text-[10px] tabular-nums text-[#282828] font-bold"
+                  className="text-[10px] tabular-nums text-ink-faint font-mono"
                 >
                   {titulo.length}/100
                 </motion.span>
@@ -137,10 +137,10 @@ export default function NuevoCuestionarioPage() {
             ref={titleRef}
             value={titulo}
             onChange={e => setTitulo(e.target.value)}
-            placeholder="¿Cuál es tu color favorito?"
+            placeholder="¿qué quieres preguntarle a todos?"
             maxLength={100}
             rows={2}
-            className="w-full bg-transparent text-[28px] font-black text-white placeholder-[#181818] resize-none outline-none leading-tight"
+            className="w-full bg-transparent font-hand-title text-[30px] text-ink placeholder-ink-faint resize-none outline-none leading-tight"
           />
         </motion.div>
 
@@ -152,22 +152,22 @@ export default function NuevoCuestionarioPage() {
           className="py-5"
         >
           <div className="flex items-center justify-between mb-4">
-            <span className="text-[10px] font-black uppercase tracking-widest text-[#282828]">Preguntas</span>
-            <div className="flex items-center gap-2">
+            <span className="text-[10px] font-black uppercase tracking-widest text-ink-soft">preguntas</span>
+            <div className="flex items-center gap-1 font-mono">
               <motion.span
                 key={preguntasValidas.length}
-                initial={{ scale: 1.3, color: BRAND }}
-                animate={{ scale: 1, color: '#1a1a1a' }}
+                initial={{ scale: 1.3 }}
+                animate={{ scale: 1 }}
                 transition={{ duration: 0.3 }}
-                className="text-[12px] font-black tabular-nums"
+                className="text-[12px] font-bold tabular-nums text-ink"
               >
                 {preguntasValidas.length}
               </motion.span>
-              <span className="text-[10px] font-black text-[#1a1a1a]">/ 10</span>
+              <span className="text-[10px] font-bold text-ink-faint">/ 10</span>
             </div>
           </div>
 
-          {/* Reorderable question list */}
+          {/* Lista reordenable = hojas que arrastras */}
           <Reorder.Group axis="y" values={items} onReorder={setItems} className="flex flex-col gap-0">
             <AnimatePresence initial={false}>
               {items.map((item, i) => (
@@ -178,17 +178,15 @@ export default function NuevoCuestionarioPage() {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -8, height: 0 }}
                   transition={{ duration: 0.2 }}
-                  className="flex items-center gap-3 py-3.5 border-b border-[#0f0f0f] cursor-default"
+                  className="flex items-center gap-3 py-3.5 border-b border-line cursor-default"
                 >
-                  {/* Number */}
-                  <motion.span
-                    className="text-[24px] font-black leading-none tabular-nums w-10 shrink-0"
-                    style={{ color: item.texto.trim() ? '#303030' : '#181818' }}
+                  <span
+                    className="font-mono text-[22px] font-bold leading-none tabular-nums w-10 shrink-0"
+                    style={{ color: item.texto.trim() ? 'var(--ink-soft)' : 'var(--ink-ghost)' }}
                   >
                     {String(i + 1).padStart(2, '0')}
-                  </motion.span>
+                  </span>
 
-                  {/* Input */}
                   <input
                     type="text"
                     value={item.texto}
@@ -196,23 +194,16 @@ export default function NuevoCuestionarioPage() {
                     onKeyDown={e => {
                       if (e.key === 'Enter') { e.preventDefault(); addItem() }
                     }}
-                    placeholder={`Pregunta ${i + 1}…`}
+                    placeholder={`escribe la pregunta ${i + 1}…`}
                     maxLength={150}
-                    className="flex-1 bg-transparent text-[14px] text-[#d0d0d0] placeholder-[#1c1c1c] outline-none"
+                    className="flex-1 bg-transparent font-hand text-[18px] text-ink placeholder-ink-faint outline-none"
                   />
 
-                  {/* Drag handle */}
-                  <Drag width={14} height={14} color="#232323" className="shrink-0 cursor-grab active:cursor-grabbing" />
+                  <Drag width={14} height={14} color="var(--ink-faint)" className="shrink-0 cursor-grab active:cursor-grabbing" />
 
-                  {/* Remove */}
                   {items.length > 1 && (
-                    <motion.button
-                      type="button"
-                      onClick={() => removeItem(item.key)}
-                      whileTap={{ scale: 0.8 }}
-                      className="p-1 shrink-0"
-                    >
-                      <Xmark width={14} height={14} color="#333" />
+                    <motion.button type="button" onClick={() => removeItem(item.key)} whileTap={{ scale: 0.8 }} className="p-1 shrink-0">
+                      <Xmark width={14} height={14} color="var(--ink-soft)" />
                     </motion.button>
                   )}
                 </Reorder.Item>
@@ -220,7 +211,7 @@ export default function NuevoCuestionarioPage() {
             </AnimatePresence>
           </Reorder.Group>
 
-          {/* Add question */}
+          {/* Agregar */}
           <AnimatePresence>
             {items.length < 10 ? (
               <motion.button
@@ -230,24 +221,24 @@ export default function NuevoCuestionarioPage() {
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 whileTap={{ scale: 0.94 }}
-                className="flex items-center gap-2 mt-5 text-[11px] font-black uppercase tracking-widest transition-colors hover:text-white"
-                style={{ color: '#2a2a2a' }}
+                className="flex items-center gap-2 mt-5 text-[11px] font-black uppercase tracking-widest transition-colors hover:text-ink"
+                style={{ color: 'var(--ink-soft)' }}
               >
                 <Plus width={14} height={14} />
-                Agregar pregunta
+                agregar pregunta
               </motion.button>
             ) : (
               <motion.p
                 initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-                className="mt-5 text-[11px] font-bold uppercase tracking-widest text-[#1c1c1c]"
+                className="mt-5 text-[11px] font-bold uppercase tracking-widest text-ink-faint"
               >
-                Máximo 10 preguntas
+                máximo 10 preguntas
               </motion.p>
             )}
           </AnimatePresence>
         </motion.div>
 
-        {/* ── Live preview ── */}
+        {/* ── Preview ── */}
         <AnimatePresence>
           {titulo.trim() && (
             <motion.div
@@ -255,21 +246,18 @@ export default function NuevoCuestionarioPage() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 16 }}
               transition={{ duration: 0.3 }}
-              className="border-t border-[#181818] pt-5"
+              className="border-t border-line pt-5"
             >
-              <span className="text-[10px] font-black uppercase tracking-widest text-[#282828] block mb-4">
-                Preview
+              <span className="text-[10px] font-black uppercase tracking-widest text-ink-soft block mb-4">
+                así se verá
               </span>
-              <motion.div
-                layout
-                className="border border-[#1c1c1c]"
-              >
+              <PaperNote seed="preview" tape>
                 <CuestionarioCard
                   cuestionario={preview}
                   onParticipate={() => {}}
                   alreadyAnswered={false}
                 />
-              </motion.div>
+              </PaperNote>
             </motion.div>
           )}
         </AnimatePresence>
@@ -277,12 +265,12 @@ export default function NuevoCuestionarioPage() {
       </div>
       </div>
 
-      {/* ── Publish button ── */}
+      {/* ── Publicar ── */}
       <motion.div
         initial={{ y: 16, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ delay: 0.2, duration: 0.25 }}
-        className="shrink-0 bg-black border-t border-[#181818] p-4"
+        className="shrink-0 bg-paper border-t border-line p-4"
       >
         <div className="max-w-[600px] mx-auto">
           <motion.button
@@ -291,9 +279,9 @@ export default function NuevoCuestionarioPage() {
             whileTap={canPublish ? { scale: 0.97 } : undefined}
             className="w-full py-4 text-[13px] font-black uppercase tracking-widest transition-all disabled:cursor-not-allowed"
             style={{
-              background: canPublish ? BRAND : '#0a0a0a',
-              color: canPublish ? '#000' : '#1e1e1e',
-              border: canPublish ? 'none' : '1px solid #181818',
+              background: canPublish ? 'var(--highlight)' : 'var(--state-disabled-bg)',
+              color: canPublish ? 'var(--highlight-ink)' : 'var(--state-disabled-ink)',
+              border: canPublish ? 'none' : '1px solid var(--border)',
             }}
           >
             <AnimatePresence mode="wait">
@@ -306,10 +294,10 @@ export default function NuevoCuestionarioPage() {
                 className="block"
               >
                 {sending
-                  ? 'Publicando…'
+                  ? 'soltando…'
                   : canPublish
-                  ? `Publicar — ${preguntasValidas.length} ${preguntasValidas.length === 1 ? 'pregunta' : 'preguntas'}`
-                  : 'Agrega un título para publicar'
+                  ? `suéltalo — ${preguntasValidas.length} ${preguntasValidas.length === 1 ? 'pregunta' : 'preguntas'}`
+                  : 'ponle una pregunta de portada'
                 }
               </motion.span>
             </AnimatePresence>

@@ -12,10 +12,9 @@ import { getProfile, type Profile } from '@/lib/profile'
 import { getTrending, darLike, darRepost, type Chisme } from '@/lib/api'
 import Avatar from '@/components/Avatar'
 import CounterFlip from '@/components/CounterFlip'
+import SecretText from '@/components/SecretText'
 import { staggerContainer, staggerItem } from '@/lib/variants'
 import RepostModal from '@/components/RepostModal'
-
-const BRAND = '#39e079'
 
 function getLS<T>(key: string, fallback: T): T {
   try { return JSON.parse(localStorage.getItem(key) ?? 'null') ?? fallback } catch { return fallback }
@@ -66,13 +65,13 @@ export default function TrendingPage() {
     setReposted(next); setLS('chismografo_reposted', next)
     setChismes(prev => prev.map(c => c.id === id ? { ...c, repost_count: c.repost_count + 1 } : c))
     await darRepost(id, profile.username, profile.avatarSeed, texto)
-    toast.success('Reposteado.')
+    toast.success('se lo pasaste a todos.')
   }
 
   if (!profile) return null
 
   return (
-    <div className="h-full overflow-y-auto bg-black text-[#f0f0f0]">
+    <div className="h-full overflow-y-auto ruled bg-paper text-ink">
       <div className="max-w-[600px] mx-auto">
 
         {/* Título de sección */}
@@ -80,11 +79,11 @@ export default function TrendingPage() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.3 }}
-          className="px-4 py-4 border-b border-[#181818] flex items-center gap-2.5"
+          className="px-4 py-5 border-b border-line flex items-center gap-2.5 bg-paper"
         >
-          <FireFlame width={28} height={28} style={{ color: BRAND }} />
-          <span className="text-[42px] font-black uppercase tracking-tighter leading-none text-white">
-            Trending
+          <FireFlame width={26} height={26} style={{ color: 'var(--highlight)' }} />
+          <span className="font-hand-title text-[36px] leading-none text-ink">
+            lo más chismeado
           </span>
         </motion.div>
 
@@ -92,27 +91,21 @@ export default function TrendingPage() {
         {loading ? (
           <div className="flex flex-col">
             {[...Array(5)].map((_, i) => (
-              <div key={i} className="px-4 py-5 border-b border-[#181818] flex gap-4">
-                <motion.div
-                  animate={{ opacity: [0.04, 0.1, 0.04] }}
-                  transition={{ repeat: Infinity, duration: 1.8, delay: i * 0.1 }}
-                  className="text-[44px] font-black text-[#0d0d0d] w-12 shrink-0 leading-none tabular-nums"
-                >
+              <div key={i} className="px-4 py-5 border-b border-line flex gap-4">
+                <span className="font-mono text-[40px] font-bold text-ink-ghost w-12 shrink-0 leading-none tabular-nums">
                   {String(i + 1).padStart(2, '0')}
-                </motion.div>
+                </span>
                 <div className="flex-1 flex flex-col gap-2.5 pt-1">
-                  <motion.div animate={{ opacity: [0.04, 0.1, 0.04] }} transition={{ repeat: Infinity, duration: 1.8, delay: i * 0.1 + 0.05 }} className="h-2 bg-white w-24" />
-                  <motion.div animate={{ opacity: [0.04, 0.1, 0.04] }} transition={{ repeat: Infinity, duration: 1.8, delay: i * 0.1 + 0.1 }} className="h-2 bg-white w-full" />
-                  <motion.div animate={{ opacity: [0.04, 0.1, 0.04] }} transition={{ repeat: Infinity, duration: 1.8, delay: i * 0.1 + 0.15 }} className="h-2 bg-white w-2/3" />
+                  <motion.div animate={{ opacity: [0.06, 0.16, 0.06] }} transition={{ repeat: Infinity, duration: 1.8, delay: i * 0.1 + 0.05 }} className="h-2 bg-ink w-24" />
+                  <motion.div animate={{ opacity: [0.06, 0.16, 0.06] }} transition={{ repeat: Infinity, duration: 1.8, delay: i * 0.1 + 0.1 }} className="h-2 bg-ink w-full" />
+                  <motion.div animate={{ opacity: [0.06, 0.16, 0.06] }} transition={{ repeat: Infinity, duration: 1.8, delay: i * 0.1 + 0.15 }} className="h-2 bg-ink w-2/3" />
                 </div>
               </div>
             ))}
           </div>
         ) : chismes.length === 0 ? (
           <div className="flex flex-col items-center py-24">
-            <p className="text-[11px] font-bold uppercase tracking-widest text-[#1c1c1c]">
-              Aún no hay chismes.
-            </p>
+            <p className="font-hand text-[20px] text-ink-faint">aún nadie ha chismeado.</p>
           </div>
         ) : (
           <motion.div variants={staggerContainer} initial="hidden" animate="show">
@@ -121,90 +114,74 @@ export default function TrendingPage() {
                 const isLiked = !!liked[c.id]
                 const isReposted = !!reposted[c.id]
                 const totalScore = c.like_count + c.comment_count + c.repost_count
+                const top3 = rank < 3
 
                 return (
-                  <motion.div
-                    key={c.id}
-                    variants={staggerItem}
-                    className="border-b border-[#181818]"
-                  >
+                  <motion.div key={c.id} variants={staggerItem} className="border-b border-line">
                     <ViewTransition name={`post-${c.id}`}>
                       <article className="px-4 py-5 flex gap-4">
 
-                        {/* Ranking number */}
-                        <div className="shrink-0 w-10 flex flex-col items-start pt-0.5">
+                        {/* Número circulado a mano */}
+                        <div className="shrink-0 w-12 flex flex-col items-center pt-0.5">
                           <span
-                            className="text-[36px] font-black leading-none tabular-nums"
-                            style={{ color: rank === 0 ? BRAND : rank === 1 ? '#303030' : rank === 2 ? '#252525' : '#1a1a1a' }}
+                            className="font-mono text-[30px] font-bold leading-none tabular-nums flex items-center justify-center"
+                            style={top3
+                              ? { color: rank === 0 ? 'var(--highlight-ink)' : 'var(--ink)', background: rank === 0 ? 'var(--highlight)' : 'transparent', border: `2px solid ${rank === 0 ? 'var(--highlight)' : 'var(--margin)'}`, borderRadius: '50%', width: 44, height: 44, transform: 'rotate(-6deg)' }
+                              : { color: 'var(--ink-ghost)' }
+                            }
                           >
-                            {String(rank + 1).padStart(2, '0')}
+                            {rank + 1}
                           </span>
                         </div>
 
                         {/* Contenido */}
                         <div className="flex-1 min-w-0">
-
-                          {/* Usuario + avatar + tiempo */}
                           <div className="flex items-center gap-2 mb-2">
                             <ViewTransition name={`avatar-${c.id}`}>
-                              <Avatar seed={c.avatar_seed} size={24} className="overflow-hidden shrink-0" style={{ borderRadius: 0 }} />
+                              <Avatar seed={c.avatar_seed} size={26} frame="tape" className="shrink-0" />
                             </ViewTransition>
-                            <span className="text-[11px] font-bold uppercase tracking-widest text-white">{c.username}</span>
-                            <span className="text-[11px] text-[#303030]">· {timeAgo(c.created_at)}</span>
+                            <span className="text-[11px] font-bold uppercase tracking-widest text-ink-soft">{c.username}</span>
+                            <span className="text-[11px] text-ink-faint font-mono">· {timeAgo(c.created_at)}</span>
                           </div>
 
-                          {/* Texto */}
-                          <p
-                            className="leading-[1.65] whitespace-pre-wrap break-words mb-3 cursor-pointer"
-                            style={{ fontSize: rank === 0 ? '18px' : rank < 3 ? '16px' : '15px', color: '#d8d8d8' }}
-                            onClick={() => startTransition(() => router.push(`/chisme/${c.id}`))}
-                          >
-                            {c.texto}
-                          </p>
+                          {c.secreto ? (
+                            <div className="mb-3">
+                              <SecretText text={c.texto} className="font-hand text-ink leading-[1.4] whitespace-pre-wrap break-words" />
+                            </div>
+                          ) : (
+                            <p
+                              className="font-hand leading-[1.4] whitespace-pre-wrap break-words mb-3 cursor-pointer text-ink"
+                              style={{ fontSize: rank === 0 ? '22px' : top3 ? '20px' : '18px' }}
+                              onClick={() => startTransition(() => router.push(`/chisme/${c.id}`))}
+                            >
+                              {c.texto}
+                            </p>
+                          )}
 
-                          {/* Score + acciones */}
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-5">
-
-                              <motion.button
-                                onClick={() => handleLike(c.id)}
-                                whileTap={!isLiked ? { scale: 0.85 } : undefined}
-                                className="flex items-center gap-2"
-                              >
+                              <motion.button onClick={() => handleLike(c.id)} whileTap={!isLiked ? { scale: 0.85 } : undefined} className="flex items-center gap-2">
                                 <motion.div animate={isLiked ? { scale: [1, 1.3, 1] } : { scale: 1 }} transition={{ duration: 0.22 }}>
-                                  {isLiked
-                                    ? <HeartSolid width={14} height={14} style={{ color: BRAND }} />
-                                    : <Heart width={14} height={14} color="#404040" />
-                                  }
+                                  {isLiked ? <HeartSolid width={14} height={14} style={{ color: 'var(--highlight)' }} /> : <Heart width={14} height={14} color="var(--ink-soft)" />}
                                 </motion.div>
                                 <CounterFlip count={c.like_count} active={isLiked} large />
                               </motion.button>
 
-                              <motion.button
-                                onClick={() => startTransition(() => router.push(`/chisme/${c.id}`))}
-                                whileTap={{ scale: 0.85 }}
-                                className="flex items-center gap-2"
-                              >
-                                <MessageText width={14} height={14} color="#404040" />
+                              <motion.button onClick={() => startTransition(() => router.push(`/chisme/${c.id}`))} whileTap={{ scale: 0.85 }} className="flex items-center gap-2">
+                                <MessageText width={14} height={14} color="var(--ink-soft)" />
                                 <CounterFlip count={c.comment_count} active={false} large />
                               </motion.button>
 
-                              <motion.button
-                                onClick={() => setRepostTarget(c)}
-                                whileTap={!isReposted ? { scale: 0.85 } : undefined}
-                                className="flex items-center gap-2"
-                              >
+                              <motion.button onClick={() => setRepostTarget(c)} whileTap={!isReposted ? { scale: 0.85 } : undefined} className="flex items-center gap-2">
                                 <motion.div animate={{ rotate: isReposted ? 360 : 0 }} transition={{ duration: 0.4 }}>
-                                  <Refresh width={14} height={14} color={isReposted ? BRAND : '#404040'} />
+                                  <Refresh width={14} height={14} color={isReposted ? 'var(--highlight)' : 'var(--ink-soft)'} />
                                 </motion.div>
                                 <CounterFlip count={c.repost_count} active={isReposted} large />
                               </motion.button>
-
                             </div>
 
-                            {/* Score total */}
                             {totalScore > 0 && (
-                              <span className="text-[10px] font-bold uppercase tracking-widest text-[#222]">
+                              <span className="text-[10px] font-mono uppercase tracking-widest text-ink-faint">
                                 {totalScore} pts
                               </span>
                             )}

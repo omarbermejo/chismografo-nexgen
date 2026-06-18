@@ -7,8 +7,6 @@ import { type Profile } from '@/lib/profile'
 import Avatar from '@/components/Avatar'
 import { staggerContainer, staggerItem } from '@/lib/variants'
 
-const BRAND = '#39e079'
-
 interface Props {
   chismeId: string
   profile: Profile
@@ -64,7 +62,7 @@ export default function CommentSection({ chismeId, profile, onCommentAdded }: Pr
           <motion.span
             animate={{ opacity: [0.2, 0.5, 0.2] }}
             transition={{ repeat: Infinity, duration: 1.3 }}
-            className="text-[12px] text-[#333]"
+            className="text-[12px] text-ink-soft"
           >
             Cargando…
           </motion.span>
@@ -78,21 +76,20 @@ export default function CommentSection({ chismeId, profile, onCommentAdded }: Pr
                 variants={staggerItem}
                 initial="hidden"
                 animate="show"
-                className="px-4 py-2.5 flex gap-3 border-b border-white/[0.03] last:border-0"
+                className="px-4 py-2.5 flex gap-3 border-b border-line last:border-0"
               >
                 {/* Avatar pequeño */}
                 <div className="shrink-0 mt-0.5">
-                  <Avatar seed={c.avatar_seed} size={30} className="rounded-full overflow-hidden" />
+                  <Avatar seed={c.avatar_seed} size={30} frame="tape" />
                 </div>
 
                 {/* Contenido */}
                 <div className="flex flex-col gap-0.5 flex-1 min-w-0">
                   <div className="flex items-center gap-1.5">
-                    <span className="text-[13px] font-semibold text-white leading-none">{c.username}</span>
-                    <span className="text-[#3a3a3a] text-[11px]">·</span>
-                    <span className="text-[12px] text-[#3a3a3a]">{timeAgo(c.created_at)}</span>
+                    <span className="text-[12px] font-bold uppercase tracking-wide text-ink-soft leading-none">{c.username}</span>
+                    <span className="text-ink-faint text-[11px] font-mono">{timeAgo(c.created_at)}</span>
                   </div>
-                  <p className="text-[14px] text-[#bbb] leading-[1.5] whitespace-pre-wrap break-words mt-0.5">
+                  <p className="font-hand text-[18px] text-ink leading-[1.4] whitespace-pre-wrap break-words mt-0.5">
                     {c.texto}
                   </p>
                 </div>
@@ -101,8 +98,8 @@ export default function CommentSection({ chismeId, profile, onCommentAdded }: Pr
           </AnimatePresence>
 
           {comentarios.length === 0 && (
-            <p className="px-4 py-2.5 pl-[52px] text-[12px] text-[#2a2a2a]">
-              Sé el primero en comentar.
+            <p className="px-4 py-2.5 pl-[52px] text-[13px] text-ink-faint font-hand">
+              Nadie ha respondido todavía. Sé el primero.
             </p>
           )}
         </motion.div>
@@ -111,9 +108,9 @@ export default function CommentSection({ chismeId, profile, onCommentAdded }: Pr
       {/* Compose comentario */}
       <form
         onSubmit={handleSubmit}
-        className="px-4 py-3 flex items-center gap-3 border-t border-white/[0.04]"
+        className="px-4 py-3 flex items-center gap-3 border-t border-line"
       >
-        <Avatar seed={profile.avatarSeed} size={30} className="rounded-full overflow-hidden shrink-0" />
+        <Avatar seed={profile.avatarSeed} size={30} frame="tape" className="shrink-0" />
         <input
           ref={inputRef}
           type="text"
@@ -125,18 +122,18 @@ export default function CommentSection({ chismeId, profile, onCommentAdded }: Pr
               if (texto.trim() && !sending) handleSubmit(e as unknown as React.FormEvent)
             }
           }}
-          placeholder="Agrega un comentario…"
+          placeholder="responde en el cuaderno…"
           maxLength={300}
-          className="flex-1 bg-transparent text-[14px] text-[#f0f0f0] placeholder-[#2e2e2e] outline-none"
+          className="flex-1 bg-transparent font-hand text-[18px] text-ink placeholder-ink-faint outline-none"
         />
         <motion.button
           type="submit"
           disabled={!texto.trim() || sending}
           whileTap={{ scale: 0.9 }}
-          className="text-[12px] font-semibold disabled:opacity-20 disabled:cursor-not-allowed shrink-0"
-          style={{ color: BRAND }}
+          className="text-[12px] font-bold uppercase tracking-widest disabled:opacity-20 disabled:cursor-not-allowed shrink-0"
+          style={{ color: 'var(--highlight)' }}
         >
-          {sending ? '…' : 'Enviar'}
+          {sending ? '…' : 'mándalo'}
         </motion.button>
       </form>
     </div>

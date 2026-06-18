@@ -11,6 +11,7 @@ export interface Chisme {
   like_count: number
   repost_count: number
   comment_count: number
+  secreto?: boolean
 }
 
 export interface Comentario {
@@ -40,11 +41,16 @@ export async function getTrending(): Promise<Chisme[]> {
   return res.json()
 }
 
-export async function postChisme(texto: string, username: string, avatar_seed: string): Promise<Chisme> {
+export async function postChisme(
+  texto: string,
+  username: string,
+  avatar_seed: string,
+  secreto = false,
+): Promise<Chisme> {
   const res = await fetch(`${BASE}/chismes`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ texto, username, avatar_seed }),
+    body: JSON.stringify({ texto, username, avatar_seed, secreto }),
   })
   if (!res.ok) throw new Error('Error al publicar chisme')
   return res.json()

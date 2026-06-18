@@ -11,10 +11,10 @@ import TextareaAutosize from 'react-textarea-autosize'
 import { getProfile, type Profile } from '@/lib/profile'
 import { getCuestionario, responderCuestionario, type CuestionarioDetalle } from '@/lib/api'
 import Avatar from '@/components/Avatar'
+import PaperNote from '@/components/PaperNote'
 import { staggerContainer, staggerItem } from '@/lib/variants'
 import { fireConfetti } from '@/lib/confetti'
 
-const BRAND = '#39e079'
 const HEADER_H = 56
 const COMPOSE_H = 72
 
@@ -70,9 +70,9 @@ export default function CuestionarioThreadPage() {
       const updated = await getCuestionario(id)
       setData(updated)
       fireConfetti()
-      toast.success('¡Respondido!')
+      toast.success('firmaste el cuaderno.')
     } catch {
-      toast.error('No se pudo enviar.')
+      toast.error('No se pudo enviar. Inténtalo otra vez.')
     } finally {
       setSending(false)
     }
@@ -81,7 +81,7 @@ export default function CuestionarioThreadPage() {
   if (!profile) return null
 
   return (
-    <div className="h-full flex flex-col overflow-hidden bg-black text-[#f0f0f0]">
+    <div className="h-full flex flex-col overflow-hidden bg-paper text-ink">
 
       {/* ── Header ── */}
       <motion.header
@@ -89,122 +89,118 @@ export default function CuestionarioThreadPage() {
         animate={{ opacity: 1 }}
         transition={{ duration: 0.2 }}
         style={{ height: HEADER_H }}
-        className="shrink-0 z-20 bg-black border-b border-[#181818]"
+        className="shrink-0 z-20 bg-paper border-b border-line"
       >
         <div className="h-full max-w-[600px] mx-auto px-3 flex items-center gap-4">
           <motion.button
             onClick={() => router.back()}
             whileTap={{ scale: 0.9 }}
-            className="p-2 -ml-2 hover:bg-white/[0.05] transition-colors"
+            className="p-2 -ml-2 hover:bg-[var(--state-hover)] transition-colors"
           >
-            <ArrowLeft width={18} height={18} color="#f0f0f0" />
+            <ArrowLeft width={18} height={18} color="var(--ink)" />
           </motion.button>
-          <span className="text-[14px] font-black uppercase tracking-widest text-white flex-1">Hilo</span>
+          <span className="text-[13px] font-black uppercase tracking-widest text-ink flex-1">el cuaderno que circula</span>
           <motion.button
             onClick={() => {
               navigator.clipboard.writeText(window.location.href)
-              toast.success('Link copiado.')
+              toast.success('listo, pásalo por debajo del pupitre.')
             }}
             whileTap={{ scale: 0.88 }}
-            className="p-2 hover:bg-white/[0.05] transition-colors"
-            style={{ color: BRAND }}
+            className="p-2 hover:bg-[var(--state-hover)] transition-colors"
+            style={{ color: 'var(--highlight)' }}
           >
             <ShareIos width={17} height={17} />
           </motion.button>
         </div>
       </motion.header>
 
-      <div className="flex-1 overflow-y-auto">
-        <div className="max-w-[600px] mx-auto" style={{ paddingBottom: answered ? 24 : COMPOSE_H + 8 }}>
+      <div className="flex-1 overflow-y-auto ruled">
+        <div className="max-w-[600px] mx-auto px-3 pt-4" style={{ paddingBottom: answered ? 24 : COMPOSE_H + 16 }}>
 
           {loading ? (
-            <div className="px-4 pt-5 pb-4 border-b border-[#181818]">
+            <div className="note px-4 pt-5 pb-4">
               <div className="flex gap-3 mb-4">
-                <motion.div animate={{ opacity: [0.04, 0.1, 0.04] }} transition={{ repeat: Infinity, duration: 1.8 }} className="w-11 h-11 bg-white shrink-0" style={{ borderRadius: 0 }} />
-                <motion.div animate={{ opacity: [0.04, 0.1, 0.04] }} transition={{ repeat: Infinity, duration: 1.8, delay: 0.1 }} className="h-2.5 bg-white w-24 mt-2" />
+                <motion.div animate={{ opacity: [0.06, 0.16, 0.06] }} transition={{ repeat: Infinity, duration: 1.8 }} className="w-11 h-11 bg-ink shrink-0" />
+                <motion.div animate={{ opacity: [0.06, 0.16, 0.06] }} transition={{ repeat: Infinity, duration: 1.8, delay: 0.1 }} className="h-2.5 bg-ink w-24 mt-2" />
               </div>
-              <motion.div animate={{ opacity: [0.04, 0.1, 0.04] }} transition={{ repeat: Infinity, duration: 1.8, delay: 0.15 }} className="h-4 bg-white w-3/4" />
+              <motion.div animate={{ opacity: [0.06, 0.16, 0.06] }} transition={{ repeat: Infinity, duration: 1.8, delay: 0.15 }} className="h-4 bg-ink w-3/4" />
             </div>
           ) : !data ? (
-            <p className="py-20 text-center text-[11px] font-bold uppercase tracking-widest text-[#1c1c1c]">
-              Cuestionario no encontrado.
+            <p className="py-20 text-center font-hand text-[18px] text-ink-faint">
+              este cuaderno no aparece.
             </p>
           ) : (
             <>
-              {/* ── Post raíz ── */}
-              <article className="px-4 pt-5 pb-4 border-b border-[#181818]">
+              {/* ── Hoja raíz ── */}
+              <PaperNote seed={data.id} tape tilt={0} className="px-4 pt-5 pb-4">
                 <div className="flex items-center gap-3 mb-4">
-                  <Avatar seed={data.avatar_seed} size={44} className="overflow-hidden shrink-0" style={{ borderRadius: 0 }} />
+                  <Avatar seed={data.avatar_seed} size={44} frame="stamp" className="shrink-0" />
                   <div>
-                    <p className="text-[12px] font-black uppercase tracking-widest text-white">{data.username}</p>
-                    <p className="text-[11px] text-[#383838] mt-0.5">{timeAgo(data.created_at)}</p>
+                    <p className="text-[12px] font-black uppercase tracking-widest text-ink">{data.username}</p>
+                    <p className="text-[11px] text-ink-faint font-mono mt-0.5">{timeAgo(data.created_at)}</p>
                   </div>
-                  <span className="ml-auto text-[9px] font-black uppercase tracking-widest px-1.5 py-0.5 self-start mt-0.5" style={{ background: BRAND, color: '#000' }}>
-                    Cuestionario
+                  <span className="ml-auto text-[9px] font-black uppercase tracking-[0.2em] px-2 py-0.5 self-start mt-0.5" style={{ background: 'var(--highlight)', color: 'var(--highlight-ink)', transform: 'rotate(-1.5deg)' }}>
+                    pásalo
                   </span>
                 </div>
 
-                <h1 className="text-[22px] font-black text-white leading-tight tracking-tight mb-4">
+                <h1 className="font-hand-title text-[30px] text-ink leading-[1.1] mb-4">
                   {data.titulo}
                 </h1>
 
-                <div className="flex gap-5">
-                  <span className="text-[13px] text-[#383838]">
-                    <span className="text-white font-black">{data.preguntas.length}</span> {data.preguntas.length === 1 ? 'Pregunta' : 'Preguntas'}
+                <div className="flex gap-5 font-mono">
+                  <span className="text-[12px] text-ink-soft">
+                    <span className="text-ink font-bold">{data.preguntas.length}</span> {data.preguntas.length === 1 ? 'pregunta' : 'preguntas'}
                   </span>
-                  <span className="text-[13px] text-[#383838]">
-                    <span className="text-white font-black">{data.participant_count}</span> {data.participant_count === 1 ? 'Participante' : 'Participantes'}
+                  <span className="text-[12px] text-ink-soft">
+                    <span className="text-ink font-bold">{data.participant_count}</span> {data.participant_count === 1 ? 'firma' : 'firmas'}
                   </span>
                 </div>
-              </article>
+              </PaperNote>
 
-              {/* ── Hilo: cada pregunta con su campo (si no respondiste) y las respuestas globales ── */}
-              <motion.div variants={staggerContainer} initial="hidden" animate="show">
+              {/* ── Preguntas + firmas ── */}
+              <motion.div variants={staggerContainer} initial="hidden" animate="show" className="mt-4">
                 {data.preguntas.map((p, i) => (
-                  <motion.div key={p.id} variants={staggerItem} className="border-b border-[#181818]">
-                    {/* Pregunta como sub-cabecera del hilo */}
-                    <div className="px-4 pt-5 pb-3 flex items-center gap-2">
-                      <span className="text-[18px] font-black leading-none tabular-nums text-[#222]">
+                  <motion.div key={p.id} variants={staggerItem} className="border-b border-line pb-3 mb-3">
+                    {/* Número impreso en el margen + pregunta */}
+                    <div className="pt-2 pb-3 flex items-start gap-3">
+                      <span className="font-mono text-[26px] font-bold leading-none tabular-nums text-ink-ghost shrink-0">
                         {String(i + 1).padStart(2, '0')}
                       </span>
-                      <p className="text-[14px] font-bold text-[#c0c0c0] leading-snug">{p.texto}</p>
+                      <p className="font-hand-title text-[19px] text-ink leading-snug pt-1">{p.texto}</p>
                     </div>
 
-                    {/* Tu respuesta (solo si no has respondido) */}
+                    {/* Tu renglón (solo si no has firmado) */}
                     {!answered && (
-                      <div className="px-4 pb-4 flex gap-3">
-                        <Avatar seed={profile.avatarSeed} size={28} className="overflow-hidden shrink-0 mt-0.5" style={{ borderRadius: 0 }} />
+                      <div className="pb-4 pl-[42px] flex gap-3">
+                        <Avatar seed={profile.avatarSeed} size={28} frame="tape" className="shrink-0 mt-0.5" />
                         <TextareaAutosize
                           value={respuestas[p.id] ?? ''}
                           onChange={e => setRespuestas(prev => ({ ...prev, [p.id]: e.target.value }))}
-                          placeholder="Tu respuesta…"
+                          placeholder="escribe aquí…"
                           minRows={1}
                           maxLength={300}
-                          className="flex-1 bg-transparent border-b border-[#1c1c1c] focus:border-white text-[14px] text-white placeholder-[#282828] py-2 outline-none transition-colors resize-none leading-[1.6]"
+                          className="flex-1 bg-transparent border-b border-dashed border-ink-faint focus:border-ink font-hand text-[18px] text-ink placeholder-ink-faint py-1 outline-none transition-colors resize-none leading-[1.5]"
                         />
                       </div>
                     )}
 
-                    {/* Respuestas globales (todos las ven) */}
+                    {/* Firmas de todos */}
                     {p.respuestas.length === 0 ? (
-                      <p className="px-4 pb-5 pl-[26px] text-[11px] font-bold uppercase tracking-widest text-[#1c1c1c]">
-                        Sin respuestas aún
-                      </p>
+                      <p className="pl-[42px] pb-2 font-hand text-[15px] text-ink-faint">este renglón está vacío 👀</p>
                     ) : (
-                      <div className="pb-3">
+                      <div className="pl-[42px]">
                         {p.respuestas.map(r => (
-                          <div key={r.id} className="relative px-4 py-3 flex gap-3">
-                            {/* Hilo conector */}
-                            <div className="absolute left-[31px] top-0 bottom-0 w-px bg-[#161616]" />
-                            <div className="shrink-0 mt-0.5 relative z-10">
-                              <Avatar seed={r.avatar_seed} size={28} className="overflow-hidden" style={{ borderRadius: 0 }} />
+                          <div key={r.id} className="relative py-2 flex gap-3">
+                            <div className="shrink-0 mt-0.5">
+                              <Avatar seed={r.avatar_seed} size={26} frame="tape" />
                             </div>
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center justify-between mb-0.5">
-                                <span className="text-[11px] font-bold uppercase tracking-widest text-white">{r.username}</span>
-                                <span className="text-[11px] text-[#303030]">{timeAgo(r.created_at)}</span>
+                                <span className="text-[10px] font-bold uppercase tracking-widest text-ink-soft">{r.username}</span>
+                                <span className="text-[10px] text-ink-faint font-mono">{timeAgo(r.created_at)}</span>
                               </div>
-                              <p className="text-[14px] text-[#b0b0b0] leading-[1.6] whitespace-pre-wrap break-words">{r.texto}</p>
+                              <p className="font-hand text-[17px] text-ink leading-[1.35] whitespace-pre-wrap break-words">{r.texto}</p>
                             </div>
                           </div>
                         ))}
@@ -218,7 +214,7 @@ export default function CuestionarioThreadPage() {
         </div>
       </div>
 
-      {/* ── Barra de envío (solo si no ha respondido) ── */}
+      {/* ── Barra de envío (solo si no ha firmado) ── */}
       <AnimatePresence>
         {!answered && !loading && data && (
           <motion.div
@@ -227,7 +223,7 @@ export default function CuestionarioThreadPage() {
             exit={{ y: 8, opacity: 0 }}
             transition={{ duration: 0.18 }}
             style={{ height: COMPOSE_H }}
-            className="shrink-0 z-20 border-t border-[#181818] bg-black flex items-center"
+            className="shrink-0 z-20 border-t border-line bg-paper flex items-center"
           >
             <div className="max-w-[600px] mx-auto w-full px-4">
               <motion.button
@@ -236,12 +232,12 @@ export default function CuestionarioThreadPage() {
                 whileTap={allFilled ? { scale: 0.97 } : undefined}
                 className="w-full py-3.5 text-[12px] font-black uppercase tracking-widest disabled:cursor-not-allowed transition-all"
                 style={{
-                  background: allFilled ? BRAND : '#0d0d0d',
-                  color: allFilled ? '#000' : '#1e1e1e',
-                  border: allFilled ? 'none' : '1px solid #181818',
+                  background: allFilled ? 'var(--highlight)' : 'var(--state-disabled-bg)',
+                  color: allFilled ? 'var(--highlight-ink)' : 'var(--state-disabled-ink)',
+                  border: allFilled ? 'none' : '1px solid var(--border)',
                 }}
               >
-                {sending ? 'Enviando…' : allFilled ? 'Responder →' : 'Completa todas las respuestas'}
+                {sending ? 'pasando…' : allFilled ? 'pásalo al siguiente →' : 'completa todo para firmar'}
               </motion.button>
             </div>
           </motion.div>
