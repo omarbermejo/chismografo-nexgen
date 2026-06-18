@@ -6,17 +6,17 @@
    ════════════════════════════════════════════════════════════════ */
 :root {
   --paper: #14161a;
-  --paper-raised: #1b1e24;
+  --paper-raised: #21252e;
   --paper-sunken: #0f1115;
 
   --ink: #e9e6dc;
   --ink-soft: #a7a294;
-  --ink-faint: #5c5e66;
-  --ink-ghost: #34363d;
+  --ink-faint: #62656e;
+  --ink-ghost: #3a3d45;
   --pen: #7e9bff;
 
-  --line: #262a33;
-  --margin: #7a3a3a;
+  --line: #2c313c;
+  --margin: #8a4444;
 
   --highlight: #39e079;
   --highlight-ink: #072011;
@@ -25,11 +25,12 @@
   --marker: #ff6ba3;
   --marker-ink: #2a0814;
 
-  --border: #23262d;
+  --border: #2a2e37;
   --border-strong: #e9e6dc;
-  --tape: rgba(126, 155, 255, 0.10);
+  --tape: rgba(126, 155, 255, 0.20);
+  --note-edge: rgba(255, 255, 255, 0.06);
 
-  --shadow: 0 1px 2px rgba(0, 0, 0, 0.5), 0 10px 28px rgba(0, 0, 0, 0.38);
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.5), 0 12px 30px rgba(0, 0, 0, 0.45);
 
   --state-hover: rgba(255, 255, 255, 0.04);
   --state-active: rgba(255, 255, 255, 0.07);
@@ -66,6 +67,7 @@
   --border: #d8d0b8;
   --border-strong: #1e2742;
   --tape: rgba(43, 58, 140, 0.10);
+  --note-edge: rgba(30, 39, 66, 0.06);
 
   --shadow: 0 1px 2px rgba(30, 39, 66, 0.10), 0 10px 28px rgba(30, 39, 66, 0.07);
 
@@ -154,6 +156,7 @@ body {
   position: relative;
   background: var(--paper-raised);
   box-shadow: var(--shadow);
+  border: 1px solid var(--note-edge);
   transform: rotate(var(--tilt, 0deg));
   border-radius: 2px;
 }
