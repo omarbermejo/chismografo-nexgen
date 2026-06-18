@@ -13,13 +13,12 @@ import { es } from 'date-fns/locale'
 import { getProfile, type Profile } from '@/lib/profile'
 import {
   getChismes, postChisme, darLike, darRepost,
-  getCuestionarios, searchChismes,
-  type Chisme, type Cuestionario,
+  getCuestionarios, searchChismes, getReposts,
+  type Chisme, type Cuestionario, type RepostItem,
 } from '@/lib/api'
 import Avatar from '@/components/Avatar'
 import CounterFlip from '@/components/CounterFlip'
 import CuestionarioCard from '@/components/CuestionarioCard'
-import AnswerPanel from '@/components/AnswerPanel'
 import RepostModal from '@/components/RepostModal'
 import TextareaAutosize from 'react-textarea-autosize'
 import { staggerContainer, staggerItem, slideDown } from '@/lib/variants'
@@ -30,6 +29,7 @@ const BRAND = '#39e079'
 type FeedItem =
   | { type: 'chisme'; data: Chisme }
   | { type: 'cuestionario'; data: Cuestionario }
+  | { type: 'repost'; data: RepostItem }
 
 function getLS<T>(key: string, fallback: T): T {
   try { return JSON.parse(localStorage.getItem(key) ?? 'null') ?? fallback } catch { return fallback }
@@ -47,10 +47,11 @@ function timeAgo(dateStr: string) {
     .replace(' meses', 'mo').replace(' mes', 'mo')
 }
 
-function mergeFeed(chismes: Chisme[], cuestionarios: Cuestionario[]): FeedItem[] {
+function mergeFeed(chismes: Chisme[], cuestionarios: Cuestionario[], reposts: RepostItem[]): FeedItem[] {
   return [
     ...chismes.map(c => ({ type: 'chisme' as const, data: c })),
     ...cuestionarios.map(c => ({ type: 'cuestionario' as const, data: c })),
+    ...reposts.map(r => ({ type: 'repost' as const, data: r })),
   ].sort((a, b) => new Date(b.data.created_at).getTime() - new Date(a.data.created_at).getTime())
 }
 
@@ -59,6 +60,7 @@ export default function FeedPage() {
   const [profile, setProfile] = useState<Profile | null>(null)
   const [chismes, setChismes] = useState<Chisme[]>([])
   const [cuestionarios, setCuestionarios] = useState<Cuestionario[]>([])
+  const [reposts, setReposts] = useState<RepostItem[]>([])
 
   // Compose
   const [texto, setTexto] = useState('')
@@ -75,8 +77,7 @@ export default function FeedPage() {
   const [reposted, setReposted] = useState<Record<string, true>>({})
   const [answered, setAnswered] = useState<string[]>([])
 
-  // Panel
-  const [activePanel, setActivePanel] = useState<string | null>(null)
+  // Repost
   const [repostTarget, setRepostTarget] = useState<Chisme | null>(null)
 
   // Search
@@ -131,14 +132,16 @@ export default function FeedPage() {
   const loadInitial = useCallback(async () => {
     setLoading(true)
     try {
-      const [chismesRes, cuestionariosRes] = await Promise.all([
+      const [chismesRes, cuestionariosRes, repostsRes] = await Promise.all([
         getChismes(1),
         getCuestionarios(),
+        getReposts(),
       ])
       setChismes(chismesRes.data)
       setHasMore(chismesRes.hasMore)
       setPage(1)
       setCuestionarios(cuestionariosRes)
+      setReposts(repostsRes)
     } finally {
       setLoading(false)
     }
@@ -205,31 +208,40 @@ export default function FeedPage() {
     setRepostTarget(chisme)
   }
 
-  async function handleRepostConfirm(id: string) {
-    if (reposted[id]) return
+  async function handleRepostConfirm(id: string, texto?: string) {
+    if (reposted[id] || !profile) return
     const next = { ...reposted, [id]: true as const }
     setReposted(next); setLS('chismografo_reposted', next)
     setChismes(prev => prev.map(c => c.id === id ? { ...c, repost_count: c.repost_count + 1 } : c))
-    await darRepost(id)
+
+    // Insertar el repost en el feed de forma optimista
+    const original = repostTarget && repostTarget.id === id
+      ? repostTarget
+      : chismes.find(c => c.id === id)
+    if (original) {
+      const optimistic: RepostItem = {
+        id: `local-${id}-${Date.now()}`,
+        created_at: new Date().toISOString(),
+        username: profile.username,
+        avatar_seed: profile.avatarSeed,
+        texto: texto ?? null,
+        chisme: { ...original, repost_count: original.repost_count + 1 },
+      }
+      setReposts(prev => [optimistic, ...prev])
+    }
+
+    await darRepost(id, profile.username, profile.avatarSeed, texto)
     fireConfetti()
     toast.success('Reposteado.')
   }
 
-  function openPanel(id: string) {
-    // Refresh answered list
-    setAnswered(getLS('chismografo_answered', []))
-    setActivePanel(id)
-  }
-
-  function closePanel() {
-    setActivePanel(null)
-    // Refresh cuestionarios to get updated counts
-    getCuestionarios().then(setCuestionarios)
+  function openCuestionario(id: string) {
+    startTransition(() => router.push(`/cuestionario/${id}`))
   }
 
   if (!profile) return null
 
-  const feed = mergeFeed(chismes, cuestionarios)
+  const feed = mergeFeed(chismes, cuestionarios, reposts)
 
   return (
     <div className="h-full flex overflow-hidden">
@@ -267,50 +279,60 @@ export default function FeedPage() {
           </AnimatePresence>
           <div className="max-w-[600px] mx-auto">
 
-            {/* ── Page title + search toggle ── */}
+            {/* ── Header: título ⇄ búsqueda integrada ── */}
             <div className="px-4 py-6 border-b border-[#181818] flex items-center gap-4">
-              <FireFlame width={28} height={28} style={{ color: BRAND }} />
-              <span className="text-[42px] font-black uppercase tracking-tighter leading-none text-white flex-1">
-                Feed
-              </span>
+              <FireFlame width={28} height={28} style={{ color: BRAND }} className="shrink-0" />
+
+              {/* Zona que muta entre título y campo de búsqueda */}
+              <div className="flex-1 min-w-0 relative h-[42px] flex items-center">
+                <AnimatePresence mode="wait" initial={false}>
+                  {searchOpen ? (
+                    <motion.div
+                      key="search"
+                      initial={{ opacity: 0, scaleX: 0.6 }}
+                      animate={{ opacity: 1, scaleX: 1 }}
+                      exit={{ opacity: 0, scaleX: 0.6 }}
+                      transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}
+                      style={{ originX: 0 }}
+                      className="absolute inset-0 flex items-center gap-3"
+                    >
+                      <Search width={18} height={18} color="#383838" className="shrink-0" />
+                      <input
+                        autoFocus
+                        value={query}
+                        onChange={e => setQuery(e.target.value)}
+                        onKeyDown={e => {
+                          if (e.key === 'Escape') { setSearchOpen(false); setQuery(''); setSearchResults([]) }
+                        }}
+                        placeholder="Buscar chismes…"
+                        className="flex-1 min-w-0 bg-transparent text-[20px] font-bold text-[#e0e0e0] placeholder-[#282828] outline-none"
+                      />
+                    </motion.div>
+                  ) : (
+                    <motion.span
+                      key="title"
+                      initial={{ opacity: 0, x: -8 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: -8 }}
+                      transition={{ duration: 0.18 }}
+                      className="absolute inset-0 flex items-center text-[42px] font-black uppercase tracking-tighter leading-none text-white"
+                    >
+                      Feed
+                    </motion.span>
+                  )}
+                </AnimatePresence>
+              </div>
+
               <motion.button
                 onClick={() => { setSearchOpen(v => !v); if (searchOpen) { setQuery(''); setSearchResults([]) } }}
                 whileTap={{ scale: 0.88 }}
-                className="p-2 hover:bg-white/[0.05] transition-colors"
-                style={{ color: searchOpen ? BRAND : '#404040' }}
+                animate={{ color: searchOpen ? BRAND : '#404040', rotate: searchOpen ? 90 : 0 }}
+                transition={{ duration: 0.2 }}
+                className="p-2 hover:bg-white/[0.05] transition-colors shrink-0"
               >
-                {searchOpen ? <Xmark width={20} height={20} /> : <Search width={20} height={20} />}
+                {searchOpen ? <Xmark width={22} height={22} /> : <Search width={22} height={22} />}
               </motion.button>
             </div>
-
-            {/* ── Search bar ── */}
-            <AnimatePresence>
-              {searchOpen && (
-                <motion.div
-                  initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: 52, opacity: 1 }}
-                  exit={{ height: 0, opacity: 0 }}
-                  transition={{ duration: 0.2 }}
-                  className="overflow-hidden border-b border-[#181818]"
-                >
-                  <div className="h-full px-4 flex items-center gap-3">
-                    <Search width={14} height={14} color="#383838" />
-                    <input
-                      autoFocus
-                      value={query}
-                      onChange={e => setQuery(e.target.value)}
-                      placeholder="Buscar chismes…"
-                      className="flex-1 bg-transparent text-[14px] text-[#e0e0e0] placeholder-[#282828] outline-none"
-                    />
-                    {query && (
-                      <motion.button onClick={() => setQuery('')} whileTap={{ scale: 0.88 }}>
-                        <Xmark width={14} height={14} color="#383838" />
-                      </motion.button>
-                    )}
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
 
             {/* ── Compose area ── */}
             <div className="border-b border-[#181818]">
@@ -408,24 +430,76 @@ export default function FeedPage() {
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
-                  className="border-b border-[#181818]"
+                  className="border-b border-[#181818] overflow-hidden"
                 >
-                  {searchLoading ? (
-                    <div className="py-8 text-center text-[11px] font-bold uppercase tracking-widest text-[#282828]">Buscando…</div>
-                  ) : searchResults.length === 0 ? (
-                    <div className="py-8 text-center text-[11px] font-bold uppercase tracking-widest text-[#1c1c1c]">Sin resultados.</div>
-                  ) : (
-                    searchResults.map(c => (
-                      <div key={c.id} className="px-4 py-4 border-b border-[#181818] flex gap-3 cursor-pointer hover:bg-white/[0.02]"
-                        onClick={() => startTransition(() => router.push(`/chisme/${c.id}`))}>
-                        <Avatar seed={c.avatar_seed} size={32} className="overflow-hidden shrink-0" style={{ borderRadius: 0 }} />
-                        <div className="flex-1 min-w-0">
-                          <span className="text-[11px] font-bold uppercase tracking-widest text-white">{c.username}</span>
-                          <p className="text-[14px] text-[#d0d0d0] leading-[1.6] mt-1">{c.texto}</p>
+                  <AnimatePresence mode="wait">
+                    {searchLoading ? (
+                      <motion.div
+                        key="searching"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.15 }}
+                      >
+                        {/* Barra de escaneo */}
+                        <div className="relative h-[2px] w-full overflow-hidden bg-[#111]">
+                          <motion.div
+                            initial={{ x: '-100%' }}
+                            animate={{ x: '400%' }}
+                            transition={{ repeat: Infinity, duration: 0.9, ease: 'easeInOut' }}
+                            className="absolute inset-y-0 w-1/4"
+                            style={{ background: `linear-gradient(to right, transparent, ${BRAND}, transparent)` }}
+                          />
                         </div>
-                      </div>
-                    ))
-                  )}
+                        <div className="py-7 flex items-center justify-center gap-2 text-[11px] font-bold uppercase tracking-widest text-[#383838]">
+                          Buscando
+                          {[0, 1, 2].map(i => (
+                            <motion.span
+                              key={i}
+                              animate={{ opacity: [0.2, 1, 0.2] }}
+                              transition={{ repeat: Infinity, duration: 1, delay: i * 0.18 }}
+                              style={{ color: BRAND }}
+                            >
+                              ·
+                            </motion.span>
+                          ))}
+                        </div>
+                      </motion.div>
+                    ) : searchResults.length === 0 ? (
+                      <motion.div
+                        key="empty"
+                        initial={{ opacity: 0, y: 6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.2 }}
+                        className="py-8 text-center text-[11px] font-bold uppercase tracking-widest text-[#1c1c1c]"
+                      >
+                        Sin resultados.
+                      </motion.div>
+                    ) : (
+                      <motion.div
+                        key="results"
+                        variants={staggerContainer}
+                        initial="hidden"
+                        animate="show"
+                      >
+                        {searchResults.map(c => (
+                          <motion.div
+                            key={c.id}
+                            variants={staggerItem}
+                            onClick={() => startTransition(() => router.push(`/chisme/${c.id}`))}
+                            className="px-4 py-4 border-b border-[#181818] flex gap-3 cursor-pointer hover:bg-white/[0.02] transition-colors"
+                          >
+                            <Avatar seed={c.avatar_seed} size={32} className="overflow-hidden shrink-0" style={{ borderRadius: 0 }} />
+                            <div className="flex-1 min-w-0">
+                              <span className="text-[11px] font-bold uppercase tracking-widest text-white">{c.username}</span>
+                              <p className="text-[14px] text-[#d0d0d0] leading-[1.6] mt-1">{c.texto}</p>
+                            </div>
+                          </motion.div>
+                        ))}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </motion.div>
               )}
             </AnimatePresence>
@@ -504,6 +578,46 @@ export default function FeedPage() {
                           </article>
                         </ViewTransition>
                       </motion.div>
+                    ) : item.type === 'repost' ? (
+                      <motion.div
+                        key={`repost-${item.data.id}`}
+                        variants={staggerItem}
+                        initial="hidden"
+                        animate="show"
+                        exit={{ opacity: 0 }}
+                        className="border-b border-[#181818]"
+                      >
+                        <article className="px-4 pt-3 pb-4">
+                          {/* Etiqueta de repost */}
+                          <div className="flex items-center gap-1.5 mb-2 pl-[2px] text-[10px] font-black uppercase tracking-widest text-[#383838]">
+                            <Refresh width={12} height={12} style={{ color: BRAND }} />
+                            <span>{item.data.username} reposteó</span>
+                            <span className="text-[#222] ml-auto font-medium normal-case tracking-normal text-[11px]">{timeAgo(item.data.created_at)}</span>
+                          </div>
+
+                          {/* Cita opcional */}
+                          {item.data.texto && (
+                            <p className="text-[15px] text-[#d0d0d0] leading-[1.65] whitespace-pre-wrap break-words mb-3 pl-[2px]">
+                              {item.data.texto}
+                            </p>
+                          )}
+
+                          {/* Chisme original embebido (clickable) */}
+                          <div
+                            onClick={() => startTransition(() => router.push(`/chisme/${item.data.chisme.id}`))}
+                            className="border border-[#181818] px-3 py-3 flex gap-3 cursor-pointer hover:bg-white/[0.02] transition-colors"
+                          >
+                            <Avatar seed={item.data.chisme.avatar_seed} size={28} className="overflow-hidden shrink-0 mt-0.5" style={{ borderRadius: 0 }} />
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center justify-between mb-1">
+                                <span className="text-[11px] font-bold uppercase tracking-widest text-[#909090]">{item.data.chisme.username}</span>
+                                <span className="text-[11px] text-[#303030]">{timeAgo(item.data.chisme.created_at)}</span>
+                              </div>
+                              <p className="text-[14px] text-[#b0b0b0] leading-[1.6] whitespace-pre-wrap break-words">{item.data.chisme.texto}</p>
+                            </div>
+                          </div>
+                        </article>
+                      </motion.div>
                     ) : (
                       <motion.div
                         key={`cuestionario-${item.data.id}`}
@@ -513,9 +627,8 @@ export default function FeedPage() {
                       >
                         <CuestionarioCard
                           cuestionario={item.data}
-                          onParticipate={openPanel}
+                          onParticipate={openCuestionario}
                           alreadyAnswered={answered.includes(item.data.id)}
-                          isActive={activePanel === item.data.id}
                         />
                       </motion.div>
                     )
@@ -540,27 +653,6 @@ export default function FeedPage() {
           </div>
         </div>
       </div>
-
-      {/* ── Panel column — second feed, same level ── */}
-      <AnimatePresence>
-        {activePanel && (
-          <motion.div
-            key="answer-panel"
-            initial={{ width: 0, opacity: 0 }}
-            animate={{ width: '48%', opacity: 1 }}
-            exit={{ width: 0, opacity: 0 }}
-            transition={{ type: 'spring', stiffness: 360, damping: 38 }}
-            className="shrink-0 h-screen border-l border-[#1e1e1e] overflow-hidden bg-black relative"
-            style={{ maxWidth: 520 }}
-          >
-            <AnswerPanel
-              cuestionarioId={activePanel}
-              profile={profile}
-              onClose={closePanel}
-            />
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       {/* ── Repost modal ── */}
       <RepostModal

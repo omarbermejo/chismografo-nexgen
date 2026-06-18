@@ -60,12 +60,12 @@ export default function TrendingPage() {
     await darLike(id)
   }
 
-  async function handleRepostConfirm(id: string) {
-    if (reposted[id]) return
+  async function handleRepostConfirm(id: string, texto?: string) {
+    if (reposted[id] || !profile) return
     const next = { ...reposted, [id]: true as const }
     setReposted(next); setLS('chismografo_reposted', next)
     setChismes(prev => prev.map(c => c.id === id ? { ...c, repost_count: c.repost_count + 1 } : c))
-    await darRepost(id)
+    await darRepost(id, profile.username, profile.avatarSeed, texto)
     toast.success('Reposteado.')
   }
 

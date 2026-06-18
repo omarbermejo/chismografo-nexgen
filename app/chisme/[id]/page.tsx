@@ -68,11 +68,11 @@ export default function ChismePage() {
   }
 
   async function handleRepost() {
-    if (!chisme || reposted[chisme.id]) return
+    if (!chisme || !profile || reposted[chisme.id]) return
     const next = { ...reposted, [chisme.id]: true as const }
     setReposted(next); setLS('chismografo_reposted', next)
     setChisme(prev => prev ? { ...prev, repost_count: prev.repost_count + 1 } : prev)
-    await darRepost(chisme.id)
+    await darRepost(chisme.id, profile.username, profile.avatarSeed)
     toast.success('Reposteado.')
   }
 

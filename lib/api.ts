@@ -54,8 +54,32 @@ export async function darLike(chismeId: string): Promise<void> {
   await fetch(`${BASE}/chismes/${chismeId}/likes`, { method: 'POST' })
 }
 
-export async function darRepost(chismeId: string): Promise<void> {
-  await fetch(`${BASE}/chismes/${chismeId}/reposts`, { method: 'POST' })
+export interface RepostItem {
+  id: string
+  created_at: string
+  username: string
+  avatar_seed: string
+  texto: string | null
+  chisme: Chisme
+}
+
+export async function darRepost(
+  chismeId: string,
+  username: string,
+  avatar_seed: string,
+  texto?: string,
+): Promise<void> {
+  await fetch(`${BASE}/chismes/${chismeId}/reposts`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, avatar_seed, texto: texto ?? null }),
+  })
+}
+
+export async function getReposts(): Promise<RepostItem[]> {
+  const res = await fetch(`${BASE}/chismes/reposts`, { cache: 'no-store' })
+  if (!res.ok) throw new Error('Error al cargar reposts')
+  return res.json()
 }
 
 export async function getChisme(id: string): Promise<Chisme> {
