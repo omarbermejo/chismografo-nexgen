@@ -200,6 +200,7 @@ export default function FeedPage() {
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'chismes' },
         (payload) => {
+          console.log('[realtime] nuevo chisme:', payload.new)
           const row = payload.new as { id: string; texto: string; username: string; avatar_seed: string; secreto: boolean; created_at: string }
           const item: Chisme = { ...row, like_count: 0, repost_count: 0, comment_count: 0, poll: null }
           setChismes(prev => {
@@ -262,7 +263,9 @@ export default function FeedPage() {
           ))
         }
       )
-      .subscribe()
+      .subscribe((status, err) => {
+        console.log('[realtime] status:', status, err ?? '')
+      })
 
     return () => { supabase.removeChannel(channel) }
   }, [])
