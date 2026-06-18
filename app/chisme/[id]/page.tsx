@@ -15,6 +15,7 @@ import CounterFlip from '@/components/CounterFlip'
 import PaperNote from '@/components/PaperNote'
 import SecretText from '@/components/SecretText'
 import BookmarkButton from '@/components/BookmarkButton'
+import HashtagText from '@/components/HashtagText'
 import { staggerContainer, staggerItem } from '@/lib/variants'
 
 const HEADER_H = 56 // used for header height
@@ -148,7 +149,12 @@ export default function ChismePage() {
                     <Avatar seed={chisme.avatar_seed} size={46} frame="polaroid" className="shrink-0" />
                   </ViewTransition>
                   <div>
-                    <p className="text-[12px] font-black uppercase tracking-widest text-ink">{chisme.username}</p>
+                    <button
+                      onClick={() => startTransition(() => router.push(`/u/${chisme.username}`))}
+                      className="text-[12px] font-black uppercase tracking-widest text-ink hover:text-ink-soft transition-colors"
+                    >
+                      {chisme.username}
+                    </button>
                     <p className="text-[11px] text-ink-faint font-mono mt-0.5">{timeAgo(chisme.created_at)}</p>
                   </div>
                 </div>
@@ -158,9 +164,7 @@ export default function ChismePage() {
                     <SecretText text={chisme.texto} className="font-hand text-[24px] text-ink leading-[1.4] whitespace-pre-wrap break-words" />
                   </div>
                 ) : (
-                  <p className="font-hand text-[24px] text-ink leading-[1.4] whitespace-pre-wrap break-words mb-4">
-                    {chisme.texto}
-                  </p>
+                  <HashtagText text={chisme.texto} className="font-hand text-[24px] text-ink leading-[1.4] whitespace-pre-wrap break-words mb-4" />
                 )}
 
                 {/* Stats */}

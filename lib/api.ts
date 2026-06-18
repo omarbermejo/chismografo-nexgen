@@ -2,6 +2,19 @@ const BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'
 
 // ── Chismes ──────────────────────────────────────────────────────────────────
 
+export interface PollOpcion {
+  id: string
+  texto: string
+  orden: number
+  voto_count: number
+}
+
+export interface Poll {
+  id: string
+  pregunta: string
+  opciones: PollOpcion[]
+}
+
 export interface Chisme {
   id: string
   texto: string
@@ -12,6 +25,7 @@ export interface Chisme {
   repost_count: number
   comment_count: number
   secreto?: boolean
+  poll?: Poll | null
 }
 
 export interface Comentario {
@@ -85,6 +99,38 @@ export async function darRepost(
 export async function getReposts(): Promise<RepostItem[]> {
   const res = await fetch(`${BASE}/chismes/reposts`, { cache: 'no-store' })
   if (!res.ok) throw new Error('Error al cargar reposts')
+  return res.json()
+}
+
+export async function crearPoll(chismeId: string, pregunta: string, opciones: string[]): Promise<Poll> {
+  const res = await fetch(`${BASE}/chismes/${chismeId}/poll`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ pregunta, opciones }),
+  })
+  if (!res.ok) throw new Error('Error al crear encuesta')
+  return res.json()
+}
+
+export async function votarPoll(chismeId: string, opcionId: string): Promise<PollOpcion[]> {
+  const res = await fetch(`${BASE}/chismes/${chismeId}/poll/votar`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ opcion_id: opcionId }),
+  })
+  if (!res.ok) throw new Error('Error al votar')
+  return res.json()
+}
+
+export async function getChismesByUser(username: string): Promise<Chisme[]> {
+  const res = await fetch(`${BASE}/chismes/user/${encodeURIComponent(username)}`, { cache: 'no-store' })
+  if (!res.ok) throw new Error('Usuario no encontrado')
+  return res.json()
+}
+
+export async function getChismesByHashtag(tag: string): Promise<Chisme[]> {
+  const res = await fetch(`${BASE}/chismes/hashtag/${encodeURIComponent(tag)}`, { cache: 'no-store' })
+  if (!res.ok) throw new Error('Error al buscar hashtag')
   return res.json()
 }
 

@@ -23,6 +23,7 @@ import RepostModal from '@/components/RepostModal'
 import PaperNote from '@/components/PaperNote'
 import SecretText from '@/components/SecretText'
 import BookmarkButton from '@/components/BookmarkButton'
+import HashtagText from '@/components/HashtagText'
 import TextareaAutosize from 'react-textarea-autosize'
 import { staggerContainer, staggerItem, slideDown } from '@/lib/variants'
 import { fireConfetti } from '@/lib/confetti'
@@ -533,15 +534,21 @@ export default function FeedPage() {
                               </div>
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center justify-between mb-1.5">
-                                  <span className="text-[11px] font-bold uppercase tracking-widest text-ink-soft">{item.data.username}</span>
+                                  <button
+                                    onClick={() => startTransition(() => router.push(`/u/${item.data.username}`))}
+                                    className="text-[11px] font-bold uppercase tracking-widest text-ink-soft hover:text-ink transition-colors"
+                                  >
+                                    {item.data.username}
+                                  </button>
                                   <span className="text-[11px] text-ink-faint font-mono">{timeAgo(item.data.created_at)}</span>
                                 </div>
                                 {item.data.secreto ? (
                                   <SecretText text={item.data.texto} className="font-hand text-[20px] text-ink leading-[1.45] whitespace-pre-wrap break-words" />
                                 ) : (
-                                  <p className="font-hand text-[20px] text-ink leading-[1.45] whitespace-pre-wrap break-words">
-                                    {item.data.texto}
-                                  </p>
+                                  <HashtagText
+                                    text={item.data.texto}
+                                    className="font-hand text-[20px] text-ink leading-[1.45] whitespace-pre-wrap break-words"
+                                  />
                                 )}
                                 <div className="flex items-center gap-5 mt-3">
                                   <motion.button onClick={() => handleLike(item.data.id)} whileTap={!liked[item.data.id] ? { scale: 0.85 } : undefined} className="flex items-center gap-2">

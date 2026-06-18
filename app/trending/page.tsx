@@ -14,6 +14,7 @@ import Avatar from '@/components/Avatar'
 import CounterFlip from '@/components/CounterFlip'
 import SecretText from '@/components/SecretText'
 import BookmarkButton from '@/components/BookmarkButton'
+import HashtagText from '@/components/HashtagText'
 import { staggerContainer, staggerItem } from '@/lib/variants'
 import RepostModal from '@/components/RepostModal'
 
@@ -141,7 +142,12 @@ export default function TrendingPage() {
                             <ViewTransition name={`avatar-${c.id}`}>
                               <Avatar seed={c.avatar_seed} size={26} frame="tape" className="shrink-0" />
                             </ViewTransition>
-                            <span className="text-[11px] font-bold uppercase tracking-widest text-ink-soft">{c.username}</span>
+                            <button
+                              onClick={() => startTransition(() => router.push(`/u/${c.username}`))}
+                              className="text-[11px] font-bold uppercase tracking-widest text-ink-soft hover:text-ink transition-colors"
+                            >
+                              {c.username}
+                            </button>
                             <span className="text-[11px] text-ink-faint font-mono">· {timeAgo(c.created_at)}</span>
                           </div>
 
@@ -150,13 +156,12 @@ export default function TrendingPage() {
                               <SecretText text={c.texto} className="font-hand text-ink leading-[1.4] whitespace-pre-wrap break-words" />
                             </div>
                           ) : (
-                            <p
+                            <HashtagText
+                              text={c.texto}
                               className="font-hand leading-[1.4] whitespace-pre-wrap break-words mb-3 cursor-pointer text-ink"
                               style={{ fontSize: rank === 0 ? '22px' : top3 ? '20px' : '18px' }}
                               onClick={() => startTransition(() => router.push(`/chisme/${c.id}`))}
-                            >
-                              {c.texto}
-                            </p>
+                            />
                           )}
 
                           <div className="flex items-center justify-between">
