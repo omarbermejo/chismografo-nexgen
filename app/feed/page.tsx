@@ -4,7 +4,7 @@ import { useEffect, useState, useRef, startTransition, useCallback } from 'react
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ViewTransition } from 'react'
-import { Heart, HeartSolid, MessageText, Refresh, Notes, EditPencil, Search, Xmark, EyeClosed } from 'iconoir-react'
+import { Heart, HeartSolid, MessageText, Refresh, Notes, EditPencil, Search, Xmark, EyeClosed, List, Plus, Minus } from 'iconoir-react'
 import { useInView } from 'react-intersection-observer'
 import { useDebounce } from 'use-debounce'
 import { toast } from 'sonner'
@@ -14,6 +14,7 @@ import { getProfile, type Profile } from '@/lib/profile'
 import {
   getChismes, postChisme, darLike, darRepost,
   getCuestionarios, searchChismes, getReposts,
+  crearPoll, votarPoll,
   type Chisme, type Cuestionario, type RepostItem,
 } from '@/lib/api'
 import Avatar from '@/components/Avatar'
@@ -24,6 +25,7 @@ import PaperNote from '@/components/PaperNote'
 import SecretText from '@/components/SecretText'
 import BookmarkButton from '@/components/BookmarkButton'
 import HashtagText from '@/components/HashtagText'
+import PollWidget from '@/components/PollWidget'
 import TextareaAutosize from 'react-textarea-autosize'
 import { staggerContainer, staggerItem, slideDown } from '@/lib/variants'
 import { fireConfetti } from '@/lib/confetti'
@@ -93,6 +95,14 @@ export default function FeedPage() {
   const [anon, setAnon] = useState(false)
   const [secret, setSecret] = useState(false)
 
+  // Poll draft en el compose
+  const [pollOpen, setPollOpen] = useState(false)
+  const [pollPregunta, setPollPregunta] = useState('')
+  const [pollOpciones, setPollOpciones] = useState(['', ''])
+
+  // Votos: chisme_id → opcion_id ya votado
+  const [voted, setVoted] = useState<Record<string, string>>({})
+
   const [pullY, setPullY] = useState(0)
   const [refreshing, setRefreshing] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -129,6 +139,7 @@ export default function FeedPage() {
     setLiked(getLS('chismografo_liked', {}))
     setReposted(getLS('chismografo_reposted', {}))
     setAnswered(getLS('chismografo_answered', []))
+    setVoted(getLS('chismografo_voted', {}))
     loadInitial()
   }, [router])
 
@@ -186,12 +197,19 @@ export default function FeedPage() {
     const username = anon ? 'anónimo' : profile.username
     const avatarSeed = anon ? `anon-${Date.now()}` : profile.avatarSeed
     const esSecreto = secret
+    const tienePoll = pollOpen && pollPregunta.trim() && pollOpciones.filter(o => o.trim()).length >= 2
     try {
       const nuevo = await postChisme(texto.trim(), username, avatarSeed, esSecreto)
+      if (tienePoll) {
+        const opcionesValidas = pollOpciones.filter(o => o.trim())
+        const poll = await crearPoll(nuevo.id, pollPregunta.trim(), opcionesValidas)
+        nuevo.poll = poll
+      }
       setChismes(prev => [nuevo, ...prev])
       if (anon) setAnon(false)
       setSecret(false)
       setTexto('')
+      if (tienePoll) { setPollOpen(false); setPollPregunta(''); setPollOpciones(['', '']) }
       fireConfetti()
       toast.success(esSecreto ? 'queda tapado. 🤫' : 'queda escrito. 🤫')
     } catch {
@@ -199,6 +217,19 @@ export default function FeedPage() {
     } finally {
       setSending(false)
     }
+  }
+
+  async function handleVotar(chismeId: string, opcionId: string) {
+    if (voted[chismeId]) return
+    const nextVoted = { ...voted, [chismeId]: opcionId }
+    setVoted(nextVoted); setLS('chismografo_voted', nextVoted)
+    try {
+      const opcionesActualizadas = await votarPoll(chismeId, opcionId)
+      setChismes(prev => prev.map(c => {
+        if (c.id !== chismeId || !c.poll) return c
+        return { ...c, poll: { ...c.poll, opciones: opcionesActualizadas } }
+      }))
+    } catch { /* silencioso */ }
   }
 
   async function handleLike(id: string) {
@@ -365,6 +396,59 @@ export default function FeedPage() {
                     />
                   </div>
 
+                  {/* Poll draft */}
+                  <AnimatePresence>
+                    {pollOpen && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        transition={{ duration: 0.2 }}
+                        className="overflow-hidden border-t border-line pt-3 pb-1"
+                      >
+                        <p className="text-[10px] font-black uppercase tracking-widest text-ink-soft mb-2">encuesta</p>
+                        <input
+                          type="text"
+                          value={pollPregunta}
+                          onChange={e => setPollPregunta(e.target.value)}
+                          placeholder="¿A quién le crees?"
+                          maxLength={120}
+                          className="w-full bg-transparent font-hand text-[17px] text-ink placeholder-ink-faint outline-none border border-line px-3 py-1.5 mb-2"
+                        />
+                        <div className="flex flex-col gap-1.5">
+                          {pollOpciones.map((op, i) => (
+                            <div key={i} className="flex items-center gap-2">
+                              <input
+                                type="text"
+                                value={op}
+                                onChange={e => setPollOpciones(prev => prev.map((v, j) => j === i ? e.target.value : v))}
+                                placeholder={`opción ${i + 1}`}
+                                maxLength={80}
+                                className="flex-1 bg-transparent font-hand text-[16px] text-ink placeholder-ink-faint outline-none border border-line px-3 py-1"
+                              />
+                              {pollOpciones.length > 2 && (
+                                <motion.button type="button" onClick={() => setPollOpciones(prev => prev.filter((_, j) => j !== i))} whileTap={{ scale: 0.88 }} className="p-1">
+                                  <Minus width={12} height={12} color="var(--ink-soft)" />
+                                </motion.button>
+                              )}
+                            </div>
+                          ))}
+                          {pollOpciones.length < 4 && (
+                            <motion.button
+                              type="button"
+                              onClick={() => setPollOpciones(prev => [...prev, ''])}
+                              whileTap={{ scale: 0.97 }}
+                              className="flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-ink-soft hover:text-ink transition-colors self-start"
+                            >
+                              <Plus width={12} height={12} />
+                              agregar opción
+                            </motion.button>
+                          )}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+
                   {/* Acciones */}
                   <div className="flex items-center justify-between border-t border-line pt-3">
                     <div className="flex items-center gap-2">
@@ -398,6 +482,17 @@ export default function FeedPage() {
                       >
                         <EyeClosed width={12} height={12} />
                         tápalo
+                      </motion.button>
+                      <motion.button
+                        type="button"
+                        onClick={() => setPollOpen(v => !v)}
+                        whileTap={{ scale: 0.88 }}
+                        title="agregar encuesta"
+                        className="flex items-center gap-1 text-[10px] font-black uppercase tracking-widest px-2 py-1 border transition-colors"
+                        style={{ color: pollOpen ? 'var(--highlight-ink)' : 'var(--ink-soft)', background: pollOpen ? 'var(--highlight)' : 'transparent', borderColor: pollOpen ? 'var(--highlight)' : 'var(--border)' }}
+                      >
+                        <List width={12} height={12} />
+                        encuesta
                       </motion.button>
                     </div>
                     <div className="ml-auto flex items-center gap-2 pr-0.5">
@@ -548,6 +643,14 @@ export default function FeedPage() {
                                   <HashtagText
                                     text={item.data.texto}
                                     className="font-hand text-[20px] text-ink leading-[1.45] whitespace-pre-wrap break-words"
+                                  />
+                                )}
+                                {item.data.poll && (
+                                  <PollWidget
+                                    poll={item.data.poll}
+                                    chismeId={item.data.id}
+                                    yaVote={!!voted[item.data.id]}
+                                    onVotar={(opcionId) => handleVotar(item.data.id, opcionId)}
                                   />
                                 )}
                                 <div className="flex items-center gap-5 mt-3">
